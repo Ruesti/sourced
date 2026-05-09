@@ -12,6 +12,7 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 let _sbClient: any = null;
 async function getSb() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
   if (_sbClient) return _sbClient;
   if (!window.supabase) {
     await new Promise((res, rej) => {
