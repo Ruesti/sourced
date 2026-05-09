@@ -79,25 +79,40 @@ if (changed) {
 }
 
 // 5. Duck-type the OverloadYield instanceof checks in @babel/helpers helpers-generated.js.
-//    babel-loader inlines helpers (including a local OverloadYield class) from this file,
-//    while awaitAsyncGenerator is extracted to @babel/runtime with its own OverloadYield —
-//    different constructors, so instanceof always fails.
-//    Both constructors set this.k, making `x&&x.k!==void 0` a safe duck-type.
-//    Must patch helpers-generated.js (the pre-compiled map @babel/helpers actually reads),
-//    NOT lib/helpers/regeneratorAsyncIterator.js which babel ignores at runtime.
+//    babel-loader inlines helpers from this pre-compiled map. Each entry has a `dependencies`
+//    map that tells babel where to inject resolved helper references into the AST.
+//    Changing the string (instanceof → duck-type) shifts the AST, so the old path injected
+//    _OverloadYield at the wrong node, producing `u && _OverloadYield` (always-truthy).
+//    Fix: patch both the string AND remove the OverloadYield dependency entry so babel
+//    leaves the duck-type expression untouched.
 const helpersGen = path.join(root, "node_modules/@babel/helpers/lib/helpers-generated.js");
 let hg = fs.readFileSync(helpersGen, "utf8");
 let hgChanged = false;
-// regeneratorAsyncIterator: `u instanceof OverloadYield?` → duck-type
+
+// regeneratorAsyncIterator — duck-type the check + remove OverloadYield dependency
 if (hg.includes("u instanceof OverloadYield?")) {
   hg = hg.replace("u instanceof OverloadYield?", "u&&u.k!==void 0?");
   hgChanged = true;
 }
-// wrapAsyncGenerator: `u=o instanceof OverloadYield` → duck-type
+// Remove the OverloadYield dep path so babel doesn't corrupt the patched expression
+const regenDepLine = '      OverloadYield: ["body.0.body.body.0.body.body.0.block.body.1.argument.test.right"],\n';
+if (hg.includes(regenDepLine)) {
+  hg = hg.replace(regenDepLine, "");
+  hgChanged = true;
+}
+
+// wrapAsyncGenerator — duck-type the check + remove OverloadYield dependency
 if (hg.includes("u=o instanceof OverloadYield")) {
   hg = hg.replace("u=o instanceof OverloadYield", "u=o&&o.k!==void 0");
   hgChanged = true;
 }
+// wrapAsyncGenerator has OverloadYield as its only dependency entry
+const wrapDepBlock = '    dependencies: {\n      OverloadYield: ["body.1.body.body.1.body.body.0.block.body.0.declarations.2.init.right"]\n    },';
+if (hg.includes(wrapDepBlock)) {
+  hg = hg.replace(wrapDepBlock, "    dependencies: {},");
+  hgChanged = true;
+}
+
 if (hgChanged) {
   fs.writeFileSync(helpersGen, hg);
   console.log("patched: @babel/helpers helpers-generated.js — duck-type OverloadYield checks");
