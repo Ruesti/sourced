@@ -1422,7 +1422,7 @@ export default function SourcedApp() {
       }
       setLoaded(true);
       if (!getApiKey()) setShowOnboarding(true);
-    })();
+    })().catch(() => setLoaded(true));
   }, []);
 
   useEffect(() => {
