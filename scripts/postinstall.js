@@ -78,19 +78,27 @@ if (changed) {
   console.log("patched: next/dist/client/index.js — use hydrateRoot/createRoot for React 19");
 }
 
-// 5. Duck-type the OverloadYield instanceof check in @babel/helpers so it works
-//    regardless of which OverloadYield constructor created the object.
-//    babel-loader inlines _regeneratorAsyncIterator (and a local _OverloadYield)
-//    from @babel/helpers, while awaitAsyncGenerator is extracted to @babel/runtime
-//    with its own OverloadYield — different constructors, so instanceof always fails.
-//    Both constructors set this.k = d, making .k !== undefined a safe duck-type.
-const regenIter = path.join(root, "node_modules/@babel/helpers/lib/helpers/regeneratorAsyncIterator.js");
-let ri = fs.readFileSync(regenIter, "utf8");
-if (ri.includes("value instanceof _OverloadYield.default")) {
-  ri = ri.replace(
-    "value instanceof _OverloadYield.default",
-    "value && value.k !== undefined"
-  );
-  fs.writeFileSync(regenIter, ri);
-  console.log("patched: @babel/helpers regeneratorAsyncIterator — duck-type OverloadYield check");
+// 5. Duck-type the OverloadYield instanceof checks in @babel/helpers helpers-generated.js.
+//    babel-loader inlines helpers (including a local OverloadYield class) from this file,
+//    while awaitAsyncGenerator is extracted to @babel/runtime with its own OverloadYield —
+//    different constructors, so instanceof always fails.
+//    Both constructors set this.k, making `x&&x.k!==void 0` a safe duck-type.
+//    Must patch helpers-generated.js (the pre-compiled map @babel/helpers actually reads),
+//    NOT lib/helpers/regeneratorAsyncIterator.js which babel ignores at runtime.
+const helpersGen = path.join(root, "node_modules/@babel/helpers/lib/helpers-generated.js");
+let hg = fs.readFileSync(helpersGen, "utf8");
+let hgChanged = false;
+// regeneratorAsyncIterator: `u instanceof OverloadYield?` → duck-type
+if (hg.includes("u instanceof OverloadYield?")) {
+  hg = hg.replace("u instanceof OverloadYield?", "u&&u.k!==void 0?");
+  hgChanged = true;
+}
+// wrapAsyncGenerator: `u=o instanceof OverloadYield` → duck-type
+if (hg.includes("u=o instanceof OverloadYield")) {
+  hg = hg.replace("u=o instanceof OverloadYield", "u=o&&o.k!==void 0");
+  hgChanged = true;
+}
+if (hgChanged) {
+  fs.writeFileSync(helpersGen, hg);
+  console.log("patched: @babel/helpers helpers-generated.js — duck-type OverloadYield checks");
 }

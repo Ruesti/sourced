@@ -5,11 +5,12 @@
   "scripts": {
     "postinstall": "node scripts/postinstall.js",
     "dev": "NODE_OPTIONS=--openssl-legacy-provider next dev",
-    "build": "NODE_OPTIONS=--openssl-legacy-provider next build",
+    "build": "rm -rf .next/cache && NODE_OPTIONS=--openssl-legacy-provider next build",
     "start": "NODE_OPTIONS=--openssl-legacy-provider next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@babel/runtime": "^7.29.2",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "next": "^9.3.3",
