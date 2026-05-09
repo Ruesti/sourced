@@ -77,3 +77,20 @@ if (changed) {
   fs.writeFileSync(nextClient, nc);
   console.log("patched: next/dist/client/index.js — use hydrateRoot/createRoot for React 19");
 }
+
+// 5. Duck-type the OverloadYield instanceof check in @babel/helpers so it works
+//    regardless of which OverloadYield constructor created the object.
+//    babel-loader inlines _regeneratorAsyncIterator (and a local _OverloadYield)
+//    from @babel/helpers, while awaitAsyncGenerator is extracted to @babel/runtime
+//    with its own OverloadYield — different constructors, so instanceof always fails.
+//    Both constructors set this.k = d, making .k !== undefined a safe duck-type.
+const regenIter = path.join(root, "node_modules/@babel/helpers/lib/helpers/regeneratorAsyncIterator.js");
+let ri = fs.readFileSync(regenIter, "utf8");
+if (ri.includes("value instanceof _OverloadYield.default")) {
+  ri = ri.replace(
+    "value instanceof _OverloadYield.default",
+    "value && value.k !== undefined"
+  );
+  fs.writeFileSync(regenIter, ri);
+  console.log("patched: @babel/helpers regeneratorAsyncIterator — duck-type OverloadYield check");
+}
