@@ -54,6 +54,25 @@ if (nc.includes("_reactDom.default.render(reactEl,domEl,markRenderComplete)")) {
   );
   changed = true;
 }
+// 4. The __NEXT_REACT_MODE !== 'legacy' branch (always taken when the env
+//    var is unset) tries _reactDom.default.createBlockingRoot() which React 19
+//    removed, throwing before our patched else-branch ever runs.
+//    Force the condition to false so we always fall into the else branch.
+const reactModeBranch =
+  "if(process.env.__NEXT_REACT_MODE!=='legacy')" +
+  "{if(!reactRoot){var opts={hydrate:true};" +
+  "reactRoot=process.env.__NEXT_REACT_MODE==='concurrent'" +
+  "?_reactDom.default.createRoot(domEl,opts)" +
+  ":_reactDom.default.createBlockingRoot(domEl,opts);}" +
+  "reactRoot.render(reactEl);}else{";
+if (nc.includes(reactModeBranch)) {
+  nc = nc.replace(
+    reactModeBranch,
+    "if(false){if(!reactRoot){var opts={hydrate:true};reactRoot=null;}reactRoot.render(reactEl);}else{"
+  );
+  changed = true;
+}
+
 if (changed) {
   fs.writeFileSync(nextClient, nc);
   console.log("patched: next/dist/client/index.js — use hydrateRoot/createRoot for React 19");
