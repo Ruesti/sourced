@@ -23,32 +23,38 @@ if (fs.existsSync(nestedPostcss)) {
   console.log("patched: postcss-loader — removed nested PostCSS 7");
 }
 
-// 3. Shim ReactDOM.hydrate and ReactDOM.render back into React 19.
-//    Next.js 9 calls these directly; React 19 removed them.
-//    We re-add them as wrappers around hydrateRoot / createRoot.
-const reactDomPkg = path.join(root, "node_modules/react-dom/package.json");
-const reactDomIndex = path.join(root, "node_modules/react-dom/index.js");
-const shimLine = "// next9-shim-v2";
-const src = fs.readFileSync(reactDomIndex, "utf8");
-if (!src.includes(shimLine)) {
-  const shim = `${shimLine}
-var __client = require('react-dom/client');
-if (!module.exports.hydrate) {
-  module.exports.hydrate = function(element, container, cb) {
-    var root = __client.hydrateRoot(container, element);
-    if (cb) cb();
-    return root;
-  };
+// 3. Patch Next.js 9 client to use React 19's hydrateRoot/createRoot.
+//    React 19 removed ReactDOM.hydrate() and ReactDOM.render() which
+//    Next.js 9 calls directly. We patch the compiled client bundle.
+const nextClient = path.join(root, "node_modules/next/dist/client/index.js");
+let nc = fs.readFileSync(nextClient, "utf8");
+let changed = false;
+
+// Replace isInitialRender check (hydrate exists check) → always true
+if (nc.includes("typeof _reactDom.default.hydrate==='function'")) {
+  nc = nc.replace(
+    "var isInitialRender=typeof _reactDom.default.hydrate==='function';",
+    "var isInitialRender=true;"
+  );
+  changed = true;
 }
-if (!module.exports.render) {
-  module.exports.render = function(element, container, cb) {
-    var root = __client.createRoot(container);
-    root.render(element);
-    if (cb) cb();
-    return root;
-  };
+// Replace ReactDOM.hydrate call → hydrateRoot
+if (nc.includes("_reactDom.default.hydrate(reactEl,domEl,markHydrateComplete)")) {
+  nc = nc.replace(
+    "_reactDom.default.hydrate(reactEl,domEl,markHydrateComplete);isInitialRender=false;",
+    "require('react-dom/client').hydrateRoot(domEl,reactEl);isInitialRender=false;markHydrateComplete();"
+  );
+  changed = true;
 }
-`;
-  fs.writeFileSync(reactDomIndex, src + "\n" + shim);
-  console.log("patched: react-dom — shimmed hydrate/render for Next.js 9 compatibility");
+// Replace ReactDOM.render call → createRoot
+if (nc.includes("_reactDom.default.render(reactEl,domEl,markRenderComplete)")) {
+  nc = nc.replace(
+    "_reactDom.default.render(reactEl,domEl,markRenderComplete);",
+    "require('react-dom/client').createRoot(domEl).render(reactEl);markRenderComplete();"
+  );
+  changed = true;
+}
+if (changed) {
+  fs.writeFileSync(nextClient, nc);
+  console.log("patched: next/dist/client/index.js — use hydrateRoot/createRoot for React 19");
 }
