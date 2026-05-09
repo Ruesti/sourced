@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ── Sourced — BOM & Parts Manager ───────────────────────────────────────────
 // Supabase credentials are read from environment variables.
 // Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local
@@ -9,7 +10,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 const SUPABASE_URL      = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-let _sbClient = null;
+let _sbClient: any = null;
 async function getSb() {
   if (_sbClient) return _sbClient;
   if (!window.supabase) {

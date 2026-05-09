@@ -7,7 +7,11 @@
       "Bash(mkdir -p /home/uli/.claude/projects/-home-uli-Projects-sourced/memory)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(ls /home/uli/Projects/)",
+      "Read(//home/uli/Projects/**)",
+      "Bash(npx tsc *)",
+      "Bash(grep -v \"^$\")"
     ],
     "additionalDirectories": [
       "/home/uli/.claude/projects/-home-uli-Projects-sourced"
