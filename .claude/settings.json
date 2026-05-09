@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require\\('crypto'\\).createHash\\('md4'\\)\")",
+      "Bash(node --openssl-legacy-provider -e \"require\\('crypto'\\).createHash\\('md4'\\).update\\('test'\\).digest\\('hex'\\)\")",
+      "Bash(node -e \"const p = require\\('/home/uli/Projects/sourced/node_modules/postcss-loader/src/index.js'\\); console.log\\('loaded ok'\\)\")",
+      "Bash(mkdir -p /home/uli/.claude/projects/-home-uli-Projects-sourced/memory)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
+    ],
+    "additionalDirectories": [
+      "/home/uli/.claude/projects/-home-uli-Projects-sourced"
+    ]
+  }
+}
