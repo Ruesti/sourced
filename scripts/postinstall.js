@@ -28,20 +28,20 @@ if (fs.existsSync(nestedPostcss)) {
 //    We re-add them as wrappers around hydrateRoot / createRoot.
 const reactDomPkg = path.join(root, "node_modules/react-dom/package.json");
 const reactDomIndex = path.join(root, "node_modules/react-dom/index.js");
-const shimLine = "// next9-shim";
+const shimLine = "// next9-shim-v2";
 const src = fs.readFileSync(reactDomIndex, "utf8");
 if (!src.includes(shimLine)) {
   const shim = `${shimLine}
 var __client = require('react-dom/client');
-if (!exports.hydrate) {
-  exports.hydrate = function(element, container, cb) {
+if (!module.exports.hydrate) {
+  module.exports.hydrate = function(element, container, cb) {
     var root = __client.hydrateRoot(container, element);
     if (cb) cb();
     return root;
   };
 }
-if (!exports.render) {
-  exports.render = function(element, container, cb) {
+if (!module.exports.render) {
+  module.exports.render = function(element, container, cb) {
     var root = __client.createRoot(container);
     root.render(element);
     if (cb) cb();
