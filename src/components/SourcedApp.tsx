@@ -90,8 +90,8 @@ const projectToSb = (p, uid) => ({ id: p.id, user_id: uid, name: p.name, descrip
 const sbToBomItem = r => ({ id: r.id, projectId: r.project_id, partId: r.part_id, quantity: r.quantity, reference: r.reference||"", notes: r.notes||"", preferredSupplierId: r.preferred_supplier_id||null, preferredShopId: r.preferred_shop_id||null });
 const bomItemToSb = (b, uid) => ({ id: b.id, user_id: uid, project_id: b.projectId, part_id: b.partId, quantity: b.quantity, reference: b.reference||null, notes: b.notes||null, preferred_supplier_id: b.preferredSupplierId||null, preferred_shop_id: b.preferredShopId||null });
 
-const sbToSupplier = r => ({ id: r.id, partId: r.part_id, shopId: r.shop_id||"", shopName: r.shop_name, sku: r.sku||"", searchUrl: r.search_url||"", price: r.price ? parseFloat(r.price) : null, currency: r.currency||"EUR", notes: r.notes||"", aiGenerated: r.ai_generated||false });
-const supplierToSb = (s, uid) => ({ id: s.id, user_id: uid, part_id: s.partId, shop_id: s.shopId||null, shop_name: s.shopName, sku: s.sku||null, search_url: s.searchUrl||null, price: s.price||null, currency: s.currency||"EUR", notes: s.notes||null, ai_generated: s.aiGenerated||false });
+const sbToSupplier = r => ({ id: r.id, partId: r.part_id, shopId: r.shop_id||"", shopName: r.shop_name, sku: r.sku||"", searchUrl: r.search_url||"", price: r.price ? parseFloat(r.price) : null, currency: r.currency||"EUR", notes: r.notes||"", aiGenerated: r.ai_generated||false, packQty: r.pack_qty||1 });
+const supplierToSb = (s, uid) => ({ id: s.id, user_id: uid, part_id: s.partId, shop_id: s.shopId||null, shop_name: s.shopName, sku: s.sku||null, search_url: s.searchUrl||null, price: s.price||null, currency: s.currency||"EUR", notes: s.notes||null, ai_generated: s.aiGenerated||false, pack_qty: s.packQty||1 });
 
 const sbToShop = r => ({ id: r.id, name: r.name, region: r.region||"", url: r.url||"" });
 const shopToSb = (s, uid) => ({ id: s.id, user_id: uid, name: s.name, region: s.region||null, url: s.url||null });
@@ -423,16 +423,30 @@ async function nexarSearchMpn(mpn: string, name: string): Promise<{distributor:s
 }
 
 async function tavilySearch(query: string, siteFilter?: string): Promise<{title:string,url:string,snippet:string}[]> {
+  // Try server-side proxy first (uses TAVILY_API_KEY env var, no client key needed)
+  try {
+    const res = await fetch("/api/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, domain: siteFilter }),
+    });
+    if (res.ok) { const d = await res.json(); return d.results || []; }
+    if (res.status !== 503) { const e = await res.json(); throw new Error(e.error || "Search error"); }
+    // 503 = TAVILY_API_KEY not set on server → fall through to client key
+  } catch (e: any) {
+    if (!e.message?.includes("503") && !e.message?.includes("Search not configured")) throw e;
+  }
+  // Fall back to user-configured Tavily key
   const key = getTavilyKey();
-  if (!key) throw new Error("Tavily API key missing");
+  if (!key) throw new Error("Live search not available. Ask the app owner to configure TAVILY_API_KEY, or add your own key under 🔑 API Key.");
   const fullQuery = siteFilter ? `${query} site:${siteFilter}` : query;
-  const res = await fetch("https://api.tavily.com/search", {
+  const r = await fetch("https://api.tavily.com/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ api_key: key, query: fullQuery, search_depth: "basic", max_results: 5 }),
   });
-  if (!res.ok) { const e = await res.json(); throw new Error(e.message || "Tavily error"); }
-  const d = await res.json();
+  if (!r.ok) { const e = await r.json(); throw new Error(e.message || "Tavily error"); }
+  const d = await r.json();
   return (d.results || []).map((r:any) => ({ title: r.title, url: r.url, snippet: r.content || "" }));
 }
 
@@ -440,14 +454,14 @@ async function tavilySearchAliExpress(query: string): Promise<{title:string,url:
   return tavilySearch(query, "aliexpress.com");
 }
 
-async function parseAliExpressResults(part: {name:string,mpn?:string}, webResults: {title:string,url:string,snippet:string}[]): Promise<{storeName:string,productUrl:string,priceEur:number|null,note:string}[]> {
+async function parseAliExpressResults(part: {name:string,mpn?:string}, webResults: {title:string,url:string,snippet:string}[]): Promise<{storeName:string,productUrl:string,priceEur:number|null,packQty?:number,note:string}[]> {
   if (!webResults.length) return [];
-  const prompt = `Aus diesen AliExpress-Suchergebnissen für das Bauteil "${part.mpn || part.name}":
+  const prompt = `From these search results for part "${part.mpn || part.name}":
 ${webResults.map((r,i)=>`${i+1}. ${r.title}\n   URL: ${r.url}\n   ${r.snippet}`).join("\n\n")}
 
-Extrahiere Angebote als JSON-Array. Schätze Preise in EUR aus dem Titel/Snippet wenn erkennbar.
-Antworte NUR mit JSON-Array:
-[{"storeName":"Store-Name oder AliExpress","productUrl":"URL","priceEur":1.23,"note":"z.B. 10er Pack, kostenloser Versand"}]`;
+Extract offers as a JSON array. Estimate EUR prices from title/snippet. Also look for pack sizes (e.g. "100pcs", "pack of 50", "10er Pack") — set packQty accordingly, default 1.
+Reply ONLY with JSON array:
+[{"storeName":"Store name or AliExpress","productUrl":"URL","priceEur":1.23,"packQty":10,"note":"e.g. 10pcs, free shipping"}]`;
   const text = await callAI([{ role: "user", content: prompt }], 600);
   const match = text.match(/\[[\s\S]*\]/);
   return match ? JSON.parse(match[0]) : [];
@@ -1745,14 +1759,24 @@ export default function SourcedApp() {
         const { data } = await sb?.auth.getUser() || {};
         cloudUser = data?.user || null;
       } catch {}
+      // Always load localStorage first — this is the guaranteed local copy
+      const [lp, lpr, lb, ls, lsh] = await Promise.all([
+        loadLocal(STORAGE_KEYS.parts), loadLocal(STORAGE_KEYS.projects),
+        loadLocal(STORAGE_KEYS.bomItems), loadLocal(STORAGE_KEYS.suppliers),
+        loadLocal(STORAGE_KEYS.shops, DEFAULT_SHOPS),
+      ]);
+      setParts(lp); setProjects(lpr); setBomItems(lb); setSuppliers(ls); setShops(lsh);
+
       if (cloudUser) {
         setUser(cloudUser); setSyncState("syncing");
         const cloud = await sbLoadAll(cloudUser.id);
-        if (cloud) { setParts(cloud.parts); setProjects(cloud.projects); setBomItems(cloud.bomItems); setSuppliers(cloud.suppliers); if (cloud.shops) setShops(cloud.shops); setSyncState("online"); }
-        else setSyncState("offline");
-      } else {
-        const [p, pr, b, s, sh] = await Promise.all([loadLocal(STORAGE_KEYS.parts), loadLocal(STORAGE_KEYS.projects), loadLocal(STORAGE_KEYS.bomItems), loadLocal(STORAGE_KEYS.suppliers), loadLocal(STORAGE_KEYS.shops, DEFAULT_SHOPS)]);
-        setParts(p); setProjects(pr); setBomItems(b); setSuppliers(s); setShops(sh);
+        if (cloud) {
+          setParts(cloud.parts); setProjects(cloud.projects); setBomItems(cloud.bomItems);
+          setSuppliers(cloud.suppliers); if (cloud.shops) setShops(cloud.shops);
+          setSyncState("online");
+        } else {
+          setSyncState("offline"); // Tables not set up yet — local data already loaded above
+        }
       }
       setLoaded(true);
       if (!getApiKey()) setShowOnboarding(true);
@@ -1827,7 +1851,6 @@ export default function SourcedApp() {
             {[
               { id: "bom",      label: "BOM" },
               { id: "parts",    label: "Parts" },
-              { id: "sourcing", label: "Sourcing" },
               { id: "shops",    label: "Shops" },
               { id: "import",   label: "Import" },
             ].map(n => (
@@ -1880,9 +1903,8 @@ export default function SourcedApp() {
 
         <main className="main">
           {tab === "parts"    && <PartsTab    parts={parts} saveParts={saveParts} suppliers={suppliers} saveSuppliers={saveSuppliers} shops={shops} />}
-          {tab === "bom"      && <BomTab      projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} parts={parts} suppliers={suppliers} saveSuppliers={saveSuppliers} shops={shops} initialProjectId={pendingBomProjectId} />}
+          {tab === "bom"      && <BomTab      projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} parts={parts} saveParts={saveParts} suppliers={suppliers} saveSuppliers={saveSuppliers} shops={shops} initialProjectId={pendingBomProjectId} />}
           {tab === "import"   && <ImportTab   parts={parts} saveParts={saveParts} projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} />}
-          {tab === "sourcing" && <SourcingTab projects={projects} bomItems={bomItems} parts={parts} suppliers={suppliers} saveSuppliers={saveSuppliers} />}
           {tab === "shops"    && <ShopsTab    shops={shops} saveShops={saveShops} />}
         </main>
 
@@ -2518,7 +2540,7 @@ function SupplierDropdown({ item, part, suppliers, shops, onSelectShop }) {
 }
 
 // ── BOM Tab ───────────────────────────────────────────────────────────────────
-function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers, saveSuppliers, shops, initialProjectId = null }) {
+function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, suppliers, saveSuppliers, shops, initialProjectId = null }) {
   const [activeProject, setActiveProject] = useState(null);
 
   useEffect(() => {
@@ -2611,19 +2633,35 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers, s
   }, 0);
 
   const searchPrices = async () => {
-    const itemsToSearch = projectBom.filter(b => b.preferredShopId);
-    if (!itemsToSearch.length) { alert("Set a preferred shop for at least one part first."); return; }
+    const allItems = projectBom.filter(b => b.partId);
+    if (!allItems.length) return;
     const hasNexar = !!getNexarId() && !!getNexarSecret();
     const hasTavily = !!getTavilyKey();
     if (!hasNexar && !hasTavily) { alert("Add Nexar or Tavily API keys under 🔑 API Key to enable live price search."); return; }
     setSearching(true);
     const updatedSuppliers = [...suppliers];
-    for (let i = 0; i < itemsToSearch.length; i++) {
-      const item = itemsToSearch[i];
+    for (let i = 0; i < allItems.length; i++) {
+      const item = allItems[i];
       const part = parts.find(p => p.id === item.partId);
       if (!part) continue;
-      setSearchProgress({ done: i, total: itemsToSearch.length, current: part.name });
-      const shopId = item.preferredShopId;
+      setSearchProgress({ done: i, total: allItems.length, current: part.name });
+
+      let shopId = item.preferredShopId;
+
+      // Auto-suggest shop if none set
+      if (!shopId) {
+        if (shops.length > 0) {
+          try {
+            const fakeSups = shops.map(sh => ({ id: sh.id, shopName: sh.name, partId: part.id }));
+            const suggestion = await suggestBestSupplier(part, fakeSups);
+            const match = shops.find(sh => sh.name?.toLowerCase().includes(suggestion.recommendedShopName?.toLowerCase()) || suggestion.recommendedShopName?.toLowerCase().includes(sh.name?.toLowerCase()));
+            if (match) shopId = match.id;
+          } catch {}
+        }
+        if (!shopId && hasTavily) shopId = "aliexpress";
+        if (!shopId) continue;
+      }
+
       const isAli = shopId === "aliexpress";
       const isCustom = shopId?.startsWith("custom:");
       const customLabel = isCustom ? shopId.replace(/^custom:/, "") : "";
@@ -2631,26 +2669,24 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers, s
       const shopName = isAli ? "AliExpress" : isCustom ? customLabel : (shop?.name || shopId);
       const shopUrl = shop?.url || "";
       try {
-        // Nexar for non-AliExpress if available
         if (!isAli && hasNexar && part.mpn) {
           const offers = await nexarSearchMpn(part.mpn, part.name);
           const match = offers.find(o => shopName && o.distributor?.toLowerCase().includes(shopName.toLowerCase())) || offers[0];
           if (match) {
             const idx = updatedSuppliers.findIndex(s => s.partId === part.id && (s.shopId === shopId || s.shopName?.toLowerCase() === match.distributor?.toLowerCase()));
-            const entry = { id: idx >= 0 ? updatedSuppliers[idx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId, shopName: match.distributor, sku: match.sku, price: match.price, currency: match.currency, ai_generated: false, searchUrl: match.url };
+            const entry = { id: idx >= 0 ? updatedSuppliers[idx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId, shopName: match.distributor, sku: match.sku, price: match.price, currency: match.currency, ai_generated: false, searchUrl: match.url, packQty: 1 };
             if (idx >= 0) updatedSuppliers[idx] = entry; else updatedSuppliers.push(entry);
           }
         } else if ((isAli || !hasNexar) && hasTavily) {
-          // Tavily search
           const query = [part.mpn, part.name].filter(Boolean).join(" ");
-          const domain = isAli ? "aliexpress.com" : (shopUrl ? new URL(shopUrl).hostname.replace(/^www\./, "") : null);
+          const domain = isAli ? "aliexpress.com" : (shopUrl ? (() => { try { return new URL(shopUrl).hostname.replace(/^www\./, ""); } catch { return null; } })() : null);
           const results = await tavilySearch(query, domain || undefined);
           if (results.length) {
             const parsed = await parseAliExpressResults(part, results);
             if (parsed.length) {
               const s = parsed[0];
               const idx = updatedSuppliers.findIndex(sup => sup.partId === part.id && (sup.shopId === shopId || (isAli && sup.shopName?.toLowerCase().includes("aliexpress"))));
-              const entry = { id: idx >= 0 ? updatedSuppliers[idx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId, shopName: s.storeName || shopName, sku: "", price: s.priceEur, currency: "EUR", ai_generated: false, searchUrl: s.productUrl };
+              const entry = { id: idx >= 0 ? updatedSuppliers[idx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId, shopName: s.storeName || shopName, sku: "", price: s.priceEur, currency: "EUR", ai_generated: false, searchUrl: s.productUrl, packQty: s.packQty || 1 };
               if (idx >= 0) updatedSuppliers[idx] = entry; else updatedSuppliers.push(entry);
             }
           }
@@ -2782,9 +2818,32 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers, s
                               />
                             </td>
                             <td>
-                              {prefPrice
-                                ? <span className="price-tag">{(prefPrice * item.quantity).toFixed(2)} €</span>
-                                : <span style={{ color: "var(--text3)", fontSize: 12 }}>—</span>}
+                              {(() => {
+                                if (!prefPrice) return <span style={{ color: "var(--text3)", fontSize: 12 }}>—</span>;
+                                const packQty = preferred?.packQty || 1;
+                                const packsNeeded = Math.ceil(item.quantity / packQty);
+                                const surplus = packsNeeded * packQty - item.quantity;
+                                return (
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                    <span className="price-tag">{(packsNeeded * prefPrice).toFixed(2)} €</span>
+                                    {packQty > 1 && <span style={{ fontSize: 10, color: "var(--text2)" }}>{packsNeeded}× pack/{packQty}</span>}
+                                    {surplus > 0 && (
+                                      <button
+                                        style={{ fontSize: 10, color: "var(--blue)", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}
+                                        title={`Add ${surplus} surplus to parts library stock`}
+                                        onClick={() => {
+                                          const p = parts.find(pp => pp.id === item.partId);
+                                          if (!p) return;
+                                          saveParts(parts.map(pp => pp.id === p.id ? { ...pp, stock: (pp.stock || 0) + surplus } : pp));
+                                          alert(`Added ${surplus}× ${p.name} to library stock.`);
+                                        }}
+                                      >
+                                        +{surplus} → stock
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td>
                               <div style={{ display: "flex", gap: 4 }}>
@@ -3154,7 +3213,7 @@ function AddBomItemModal({ parts, onAdd, onClose, existingIds }) {
   const filtered = parts.filter(p => {
     const q = query.toLowerCase();
     return !q || p.name?.toLowerCase().includes(q) || p.mpn?.toLowerCase().includes(q);
-  });
+  }).sort((a, b) => (b.stock || 0) - (a.stock || 0));
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -3173,7 +3232,11 @@ function AddBomItemModal({ parts, onAdd, onClose, existingIds }) {
                 background: selected?.id === p.id ? "rgba(57,211,83,0.08)" : "transparent",
                 borderLeft: selected?.id === p.id ? "2px solid var(--green)" : "2px solid transparent"
               }}>
-              <div style={{ fontWeight: 500, fontSize: 13 }}>{p.name} {existingIds.includes(p.id) && <span style={{ fontSize: 11, color: "var(--orange)" }}>(already in BOM)</span>}</div>
+              <div style={{ fontWeight: 500, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                {p.name}
+                {existingIds.includes(p.id) && <span style={{ fontSize: 10, color: "var(--orange)" }}>(in BOM)</span>}
+                {(p.stock || 0) > 0 && <span style={{ fontSize: 10, color: "var(--green)", background: "rgba(57,211,83,0.12)", padding: "1px 5px", borderRadius: 3 }}>{p.stock} in stock</span>}
+              </div>
               <div style={{ fontSize: 11, color: "var(--text2)" }}>{p.mpn} · {p.category} · {p.footprint}</div>
             </div>
           ))}
@@ -3188,6 +3251,14 @@ function AddBomItemModal({ parts, onAdd, onClose, existingIds }) {
               <label>Reference (e.g. R1, C3)</label>
               <input value={ref} onChange={e => setRef(e.target.value)} className="mono" placeholder="e.g. U1, C12" />
             </div>
+          </div>
+        )}
+        {selected && (selected.stock || 0) > 0 && (
+          <div style={{ fontSize: 12, color: "var(--green)", padding: "4px 0" }}>
+            ✓ {selected.stock} in stock — you need {qty}
+            {(selected.stock || 0) >= qty
+              ? <span style={{ color: "var(--green)" }}> (covered)</span>
+              : <span style={{ color: "var(--orange)" }}> (need {qty - (selected.stock||0)} more)</span>}
           </div>
         )}
         <div className="modal-actions">
@@ -4034,405 +4105,6 @@ function aggregateStores(searchResults) {
     .sort((a, b) => b.parts.length - a.parts.length || b.rating - a.rating);
 }
 
-// ── Sourcing Tab ──────────────────────────────────────────────────────────────
-function SourcingTab({ projects, bomItems, parts, suppliers = [], saveSuppliers = null }) {
-  const [selectedProject, setSelectedProject] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [progress, setProgress] = useState({ done: 0, total: 0, current: "", phase: "" });
-  const [searchResults, setSearchResults] = useState(null);
-  const [aggregated, setAggregated] = useState([]);
-  const [distributorResults, setDistributorResults] = useState<{partId:string,partName:string,partMpn:string,offers:{distributor:string,url:string,sku:string,price:number|null,stock:number|null,currency:string}[],error?:string}[]|null>(null);
-  const [expandedStore, setExpandedStore] = useState(null);
-  const [expandedDist, setExpandedDist] = useState(null);
-  const [error, setError] = useState("");
-  const [filterMin, setFilterMin] = useState(1);
-  const [resultTab, setResultTab] = useState<"dist"|"ali">("dist");
-
-  const hasNexar = !!getNexarId() && !!getNexarSecret();
-  const hasTavily = !!getTavilyKey();
-
-  const projectBom = bomItems.filter(b => b.projectId === selectedProject);
-  const projectParts = projectBom.map(b => {
-    const part = parts.find(p => p.id === b.partId);
-    return part ? { ...part, quantity: b.quantity, reference: b.reference } : null;
-  }).filter(Boolean);
-
-  const totalParts = projectParts.length;
-
-  const handleSearch = async () => {
-    if (!selectedProject || projectParts.length === 0) return;
-    setSearching(true); setError(""); setSearchResults(null); setAggregated([]); setDistributorResults(null);
-
-    // Phase 1: Nexar distributor search (real stock)
-    if (hasNexar) {
-      const distResults = [];
-      for (let i = 0; i < projectParts.length; i++) {
-        const part = projectParts[i];
-        setProgress({ done: i, total: projectParts.length, current: part.name, phase: "Distributors (Nexar)" });
-        try {
-          const offers = await nexarSearchMpn(part.mpn || part.name, part.name);
-          distResults.push({ partId: part.id, partName: part.name, partMpn: part.mpn, offers });
-        } catch (e: any) {
-          distResults.push({ partId: part.id, partName: part.name, partMpn: part.mpn, offers: [], error: e.message });
-        }
-      }
-      setDistributorResults(distResults);
-      setResultTab("dist");
-    }
-
-    // Phase 2: AliExpress search (Tavily live or AI fallback)
-    const aliResults = [];
-    for (let i = 0; i < projectParts.length; i++) {
-      const part = projectParts[i];
-      setProgress({ done: i, total: projectParts.length, current: part.name, phase: hasTavily ? "AliExpress (live)" : "AliExpress (AI)"});
-      const query = [part.mpn, part.name].filter(Boolean).join(" ");
-      try {
-        if (hasTavily) {
-          const webResults = await tavilySearchAliExpress(query);
-          const stores = await parseAliExpressResults(part, webResults);
-          aliResults.push({ partId: part.id, partName: part.name, partMpn: part.mpn, query, stores });
-        } else {
-          const prompt = `Suche auf AliExpress nach dem Elektronikbauteil: "${query}"
-Finde 3-5 konkrete AliExpress-Händler die dieses Bauteil verkaufen.
-Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
-{"stores":[{"storeName":"Name des Stores","storeUrl":"https://www.aliexpress.com/store/...","productUrl":"https://www.aliexpress.com/item/...","priceEur":1.23,"minOrder":1,"rating":4.8,"note":"Kurze Notiz"}]}`;
-          const text = await callAI([{ role: "user", content: prompt }], 1200);
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          if (!jsonMatch) throw new Error("No JSON response from model");
-          const parsed = JSON.parse(jsonMatch[0]);
-          aliResults.push({ partId: part.id, partName: part.name, partMpn: part.mpn, query, stores: parsed.stores || [] });
-        }
-      } catch (e: any) {
-        aliResults.push({ partId: part.id, partName: part.name, partMpn: part.mpn, query, stores: [], error: e.message });
-      }
-    }
-
-    setProgress({ done: projectParts.length, total: projectParts.length, current: "", phase: "" });
-    setSearchResults(aliResults);
-    setAggregated(aggregateStores(aliResults));
-    if (!hasNexar) setResultTab("ali");
-    const errors = aliResults.filter(r => r.error);
-    if (!hasNexar && errors.length === aliResults.length) {
-      setError(`Search failed: ${errors[0]?.error}`);
-    }
-    setSearching(false);
-  };
-
-  const filteredStores = aggregated.filter(s => s.parts.length >= filterMin);
-  const coverageColor = (n) => {
-    const pct = n / totalParts;
-    if (pct >= 0.7) return "var(--green)";
-    if (pct >= 0.4) return "var(--orange)";
-    return "var(--text2)";
-  };
-
-  return (
-    <div>
-      <div className="section-header">
-        <div className="section-title">🛍️ Parts Sourcing</div>
-      </div>
-
-      {/* Beschreibung */}
-      <div style={{ background: "rgba(88,166,255,0.06)", border: "1px solid rgba(88,166,255,0.15)", borderRadius: 8, padding: "12px 16px", marginBottom: 16, fontSize: 13, color: "var(--text2)", lineHeight: 1.6 }}>
-        {hasNexar
-          ? <><strong style={{ color: "var(--green)" }}>✓ Nexar active</strong> — real stock from Mouser, DigiKey, LCSC, Farnell etc.{hasTavily ? <><br /><strong style={{ color: "var(--green)" }}>✓ Tavily active</strong> — live AliExpress search.</> : <><br />Without Tavily key: AliExpress results from AI knowledge (no live data).</>}</>
-          : hasTavily
-          ? <><strong style={{ color: "var(--green)" }}>✓ Tavily active</strong> — live AliExpress search. Without Nexar key: no real distributor stock data.</>
-          : <>Without Nexar/Tavily keys: AI estimates shops from training knowledge. For live data add API keys under <strong style={{ color: "var(--text)" }}>🔑 API Key</strong>.</>
-        }
-      </div>
-
-      {/* Projekt-Auswahl */}
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-end", marginBottom: 20, flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 220 }}>
-          <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 5, fontWeight: 500 }}>Project</div>
-          <select
-            value={selectedProject}
-            onChange={e => { setSelectedProject(e.target.value); setSearchResults(null); setAggregated([]); setDistributorResults(null); }}
-            style={{ width: "100%", background: "var(--bg2)", border: "1px solid var(--border2)", color: "var(--text)", padding: "8px 12px", borderRadius: 6, fontSize: 13, fontFamily: "IBM Plex Sans" }}
-          >
-            <option value="">— Select project —</option>
-            {projects.map(p => {
-              const count = bomItems.filter(b => b.projectId === p.id).length;
-              return <option key={p.id} value={p.id}>{p.name} ({count} parts)</option>;
-            })}
-          </select>
-        </div>
-        {selectedProject && (
-          <div style={{ fontSize: 12, color: "var(--text2)", paddingBottom: 10 }}>
-            <span style={{ color: "var(--blue)", fontFamily: "IBM Plex Mono", fontSize: 13 }}>{totalParts}</span> items in project
-          </div>
-        )}
-        <button
-          className="btn btn-ai"
-          style={{ paddingLeft: 18, paddingRight: 18 }}
-          disabled={!selectedProject || searching || totalParts === 0}
-          onClick={handleSearch}
-        >
-          {searching
-            ? <><span className="spinner" /> Searching…</>
-            : "🔍 Find vendors"}
-        </button>
-      </div>
-
-      {/* Progress */}
-      {searching && (
-        <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, padding: "16px 20px", marginBottom: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
-            <span style={{ color: "var(--text2)" }}>
-              <span className="status-dot" style={{ display: "inline-block", marginRight: 6 }} />
-              {progress.phase && <span style={{ color: "var(--blue)", marginRight: 6 }}>[{progress.phase}]</span>}
-              <strong style={{ color: "var(--text)" }}>{progress.current}</strong>
-            </span>
-            <span style={{ fontFamily: "IBM Plex Mono", color: "var(--blue)" }}>{progress.done} / {progress.total}</span>
-          </div>
-          <div style={{ background: "var(--bg3)", borderRadius: 4, height: 6, overflow: "hidden" }}>
-            <div style={{ background: "var(--green)", height: "100%", width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%`, transition: "width 0.4s ease", borderRadius: 4 }} />
-          </div>
-        </div>
-      )}
-
-      {/* Fehler */}
-      {error && <div style={{ color: "var(--red)", fontSize: 13, marginBottom: 14 }}>{error}</div>}
-
-      {/* Result tabs */}
-      {(distributorResults || searchResults) && !searching && (
-        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-          {distributorResults && (
-            <button onClick={() => setResultTab("dist")}
-              className={resultTab === "dist" ? "btn btn-primary" : "btn btn-secondary"}
-              style={{ fontSize: 13 }}>
-              🏭 Distributors ({distributorResults.reduce((s,r)=>s+r.offers.length,0)} offers)
-            </button>
-          )}
-          {searchResults && (
-            <button onClick={() => setResultTab("ali")}
-              className={resultTab === "ali" ? "btn btn-primary" : "btn btn-secondary"}
-              style={{ fontSize: 13 }}>
-              🛍️ AliExpress ({aggregated.length} stores){!hasTavily && <span style={{ fontSize: 10, color: "var(--orange)", marginLeft: 4 }}>AI</span>}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Distributor results */}
-      {distributorResults && !searching && resultTab === "dist" && (
-        <div>
-          {distributorResults.length === 0 && <div style={{ color: "var(--text2)", fontSize: 13 }}>No Nexar results.</div>}
-          {distributorResults.map(r => {
-            const isExp = expandedDist === r.partId;
-            return (
-              <div key={r.partId} style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 10, marginBottom: 8, overflow: "hidden" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", cursor: "pointer" }}
-                  onClick={() => setExpandedDist(isExp ? null : r.partId)}>
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontWeight: 600, fontSize: 13 }}>{r.partName}</span>
-                    {r.partMpn && <span style={{ fontFamily: "IBM Plex Mono", fontSize: 11, color: "var(--text3)", marginLeft: 8 }}>{r.partMpn}</span>}
-                  </div>
-                  {r.error
-                    ? <span style={{ fontSize: 12, color: "var(--red)" }}>Error</span>
-                    : <span style={{ fontSize: 12, color: r.offers.length > 0 ? "var(--green)" : "var(--text3)" }}>{r.offers.length} offers</span>
-                  }
-                  <span style={{ color: "var(--text3)", fontSize: 12 }}>{isExp ? "▲" : "▼"}</span>
-                </div>
-                {isExp && (
-                  <div style={{ borderTop: "1px solid var(--border)", padding: "0 16px 12px" }}>
-                    {r.error && <div style={{ color: "var(--red)", fontSize: 12, paddingTop: 10 }}>{r.error}</div>}
-                    {r.offers.length === 0 && !r.error && <div style={{ color: "var(--text3)", fontSize: 12, paddingTop: 10 }}>No stock found.</div>}
-                    {r.offers.map((o, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: i < r.offers.length - 1 ? "1px solid var(--border)" : "none", fontSize: 13 }}>
-                        <span style={{ fontWeight: 600, minWidth: 100, color: "var(--blue)" }}>{o.distributor}</span>
-                        {o.sku && <span style={{ fontFamily: "IBM Plex Mono", fontSize: 11, color: "var(--text3)" }}>{o.sku}</span>}
-                        {o.stock !== null && <span style={{ fontSize: 12, color: o.stock > 0 ? "var(--green)" : "var(--red)" }}>{o.stock > 0 ? `${o.stock.toLocaleString()} pcs` : "Out of stock"}</span>}
-                        {o.price !== null && <span className="price-tag">{o.price.toFixed(4)} {o.currency}</span>}
-                        {o.url && <a href={o.url} target="_blank" rel="noopener" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none", marginLeft: "auto" }}>↗ Product</a>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* AliExpress Ergebnisse */}
-      {aggregated.length > 0 && !searching && resultTab === "ali" && (
-        <div>
-          {/* Summary bar */}
-          <div style={{ display: "flex", gap: 16, marginBottom: 18, flexWrap: "wrap" }}>
-            {[
-              { val: aggregated.length, label: "Stores found", color: "var(--blue)" },
-              { val: aggregated.filter(s => s.parts.length >= 2).length, label: "with ≥2 parts", color: "var(--green)" },
-              { val: aggregated.filter(s => s.parts.length >= Math.ceil(totalParts * 0.5)).length, label: `with ≥50% coverage`, color: "var(--orange)" },
-              { val: searchResults?.filter(r => r.error).length || 0, label: "Errors", color: "var(--red)" },
-            ].map(s => (
-              <div key={s.label} style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 16px", display: "flex", gap: 10, alignItems: "center" }}>
-                <span style={{ fontSize: 20, fontWeight: 700, fontFamily: "IBM Plex Mono", color: s.color }}>{s.val}</span>
-                <span style={{ fontSize: 12, color: "var(--text2)" }}>{s.label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Filter */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <span style={{ fontSize: 13, color: "var(--text2)" }}>At least</span>
-            {[1, 2, 3].map(n => (
-              <button key={n} className={`btn btn-sm ${filterMin === n ? "btn-primary" : "btn-secondary"}`} onClick={() => setFilterMin(n)}>
-                {n} part{n > 1 ? "s" : ""}
-              </button>
-            ))}
-            <span style={{ fontSize: 12, color: "var(--text3)" }}>→ {filteredStores.length} stores</span>
-          </div>
-
-          {/* Store cards */}
-          {filteredStores.map((store, idx) => {
-            const coverage = store.parts.length / totalParts;
-            const isExpanded = expandedStore === store.storeName;
-            return (
-              <div key={store.storeName} style={{
-                background: "var(--bg2)", border: `1px solid ${idx === 0 ? "rgba(57,211,83,0.4)" : "var(--border)"}`,
-                borderRadius: 10, marginBottom: 10, overflow: "hidden",
-                boxShadow: idx === 0 ? "0 0 0 1px rgba(57,211,83,0.1)" : "none"
-              }}>
-                {/* Store header */}
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", cursor: "pointer" }}
-                  onClick={() => setExpandedStore(isExpanded ? null : store.storeName)}
-                >
-                  {/* Rank */}
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: idx === 0 ? "var(--green2)" : idx === 1 ? "rgba(88,166,255,0.2)" : "var(--bg3)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "IBM Plex Mono", fontWeight: 700, fontSize: 13, color: idx === 0 ? "#fff" : idx === 1 ? "var(--blue)" : "var(--text2)", flexShrink: 0 }}>
-                    {idx + 1}
-                  </div>
-
-                  {/* Store info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontWeight: 600, fontSize: 14 }}>{store.storeName}</span>
-                      {idx === 0 && <span style={{ fontSize: 10, background: "rgba(44,74,107,0.4)", color: "#4493f8", border: "1px solid rgba(68,147,248,0.3)", padding: "1px 8px", borderRadius: 4, fontWeight: 600 }}>BEST CHOICE</span>}
-                      {store.rating && <span style={{ fontSize: 12, color: "var(--orange)" }}>★ {store.rating.toFixed(1)}</span>}
-                    </div>
-                    {/* Coverage bar */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ flex: 1, background: "var(--bg3)", borderRadius: 3, height: 5, maxWidth: 200 }}>
-                        <div style={{ background: coverageColor(store.parts.length), height: "100%", width: `${coverage * 100}%`, borderRadius: 3, transition: "width 0.4s" }} />
-                      </div>
-                      <span style={{ fontSize: 12, fontFamily: "IBM Plex Mono", color: coverageColor(store.parts.length) }}>
-                        {store.parts.length}/{totalParts} parts
-                      </span>
-                      <span style={{ fontSize: 11, color: "var(--text3)" }}>({Math.round(coverage * 100)}%)</span>
-                    </div>
-                  </div>
-
-                  {/* Right side */}
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    {store.totalMinPrice > 0 && (
-                      <div className="price-tag" style={{ fontSize: 14, marginBottom: 4 }}>~{store.totalMinPrice.toFixed(2)} €</div>
-                    )}
-                    <div style={{ fontSize: 11, color: "var(--text3)" }}>Total (estimated)</div>
-                  </div>
-
-                  <div style={{ color: "var(--text3)", fontSize: 16, flexShrink: 0 }}>{isExpanded ? "▲" : "▼"}</div>
-                </div>
-
-                {/* Expanded: Part list */}
-                {isExpanded && (
-                  <div style={{ borderTop: "1px solid var(--border)", padding: "0 16px 14px" }}>
-                    <div style={{ paddingTop: 12, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 12, color: "var(--text2)", fontWeight: 600 }}>OFFERED PARTS</span>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        {saveSuppliers && (
-                          <button className="btn btn-secondary" style={{ fontSize: 11, padding: "3px 10px" }}
-                            onClick={() => {
-                              const newEntries = store.parts.map(p => ({
-                                id: Date.now().toString() + Math.random().toString(36).slice(2),
-                                partId: p.partId, shopName: store.storeName, shopId: "",
-                                sku: "", searchUrl: p.productUrl || store.storeUrl || "",
-                                price: p.priceEur || null, currency: "EUR",
-                                notes: p.note || "", aiGenerated: true,
-                              }));
-                              const existing = suppliers.filter(s => !newEntries.some(e => e.partId === s.partId && s.shopName === store.storeName));
-                              saveSuppliers([...existing, ...newEntries]);
-                            }}>
-                            + Save as supplier
-                          </button>
-                        )}
-                        {store.storeUrl && (
-                          <a href={store.storeUrl} target="_blank" rel="noopener"
-                            style={{ fontSize: 12, color: "var(--blue)", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
-                            🏪 Open store ↗
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                    {store.parts.map(p => (
-                      <div key={p.partId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "1px solid var(--border)", fontSize: 13 }}>
-                        <span style={{ color: "var(--green)", fontSize: 11 }}>✓</span>
-                        <span style={{ flex: 1, fontWeight: 500 }}>{p.partName}</span>
-                        {p.priceEur && <span className="price-tag">{p.priceEur.toFixed(2)} €</span>}
-                        {p.minOrder && p.minOrder > 1 && <span style={{ fontSize: 11, color: "var(--text3)" }}>MOQ: {p.minOrder}</span>}
-                        {p.productUrl && (
-                          <a href={p.productUrl} target="_blank" rel="noopener"
-                            style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>↗ Product</a>
-                        )}
-                        {p.note && <span style={{ fontSize: 11, color: "var(--text3)", fontStyle: "italic" }}>{p.note}</span>}
-                      </div>
-                    ))}
-
-                    {/* Missing parts */}
-                    {(() => {
-                      const foundIds = new Set(store.parts.map(p => p.partId));
-                      const missing = projectParts.filter(p => !foundIds.has(p.id));
-                      return missing.length > 0 && (
-                        <div style={{ marginTop: 10 }}>
-                          <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 6 }}>NOT AT THIS STORE:</div>
-                          {missing.map(p => (
-                            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 12, color: "var(--text3)" }}>
-                              <span style={{ color: "var(--red)", fontSize: 11 }}>✗</span>
-                              <span>{p.name}</span>
-                              {p.mpn && <span style={{ fontFamily: "IBM Plex Mono", fontSize: 11 }}>{p.mpn}</span>}
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Parts with no results */}
-          {searchResults?.some(r => r.stores.length === 0) && (
-            <div style={{ background: "rgba(248,81,73,0.06)", border: "1px solid rgba(248,81,73,0.2)", borderRadius: 8, padding: "12px 16px", marginTop: 14 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: "var(--red)" }}>⚠️ No results found for:</div>
-              {searchResults.filter(r => r.stores.length === 0).map(r => (
-                <div key={r.partId} style={{ fontSize: 12, color: "var(--text2)", padding: "3px 0" }}>
-                  • {r.partName} {r.partMpn && <span style={{ fontFamily: "IBM Plex Mono", color: "var(--text3)" }}>({r.partMpn})</span>}
-                  {r.error && <span style={{ color: "var(--red)", marginLeft: 8 }}>{r.error}</span>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!searching && !searchResults && !distributorResults && (
-        <div className="empty-state" style={{ paddingTop: 60 }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🛍️</div>
-          <h3>Parts Sourcing</h3>
-          <p style={{ maxWidth: 400, margin: "0 auto", lineHeight: 1.6 }}>
-            Select a project and start searching.
-            {hasNexar && " Nexar provides real stock data from Mouser, DigiKey, LCSC and others."}
-            {hasTavily && " Tavily searches AliExpress live."}
-            {!hasNexar && !hasTavily && " For live data: enter a Nexar and/or Tavily key under 🔑 API Key."}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Shops Tab ─────────────────────────────────────────────────────────────────
 function ShopsTab({ shops, saveShops }) {
