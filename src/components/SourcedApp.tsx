@@ -109,136 +109,136 @@ async function sbDelete(table, id) {
 // ── Persistenz ────────────────────────────────────────────────────────────────
 // ── Kategorie-Gruppen & Built-in Templates ────────────────────────────────────
 const PART_GROUPS = [
-  { id: "electronic",   label: "Elektronik",     icon: "⚡", color: "#1a5fa3" },
-  { id: "drive",        label: "Antrieb",         icon: "⚙️", color: "#e8700a" },
-  { id: "linear",       label: "Lineartechnik",   icon: "📏", color: "#9b59b6" },
-  { id: "pneumatic",    label: "Pneumatik",       icon: "💨", color: "#1a9fa3" },
-  { id: "mechanic",     label: "Mechanik",        icon: "🔧", color: "#27ae60" },
-  { id: "normpart",     label: "Normteile",       icon: "🔩", color: "#7f8c8d" },
-  { id: "structure",    label: "Konstruktion",    icon: "📐", color: "#16a085" },
-  { id: "connection",   label: "Verbindung",      icon: "🔌", color: "#8e44ad" },
-  { id: "sensor",       label: "Sensorik",        icon: "📡", color: "#2980b9" },
-  { id: "other",        label: "Sonstiges",       icon: "📦", color: "#555" },
+  { id: "electronic",   label: "Electronics",    icon: "⚡", color: "#1a5fa3" },
+  { id: "drive",        label: "Drive",           icon: "⚙️", color: "#e8700a" },
+  { id: "linear",       label: "Linear motion",   icon: "📏", color: "#9b59b6" },
+  { id: "pneumatic",    label: "Pneumatics",      icon: "💨", color: "#1a9fa3" },
+  { id: "mechanic",     label: "Mechanical",      icon: "🔧", color: "#27ae60" },
+  { id: "normpart",     label: "Fasteners",       icon: "🔩", color: "#7f8c8d" },
+  { id: "structure",    label: "Structure",       icon: "📐", color: "#16a085" },
+  { id: "connection",   label: "Connection",      icon: "🔌", color: "#8e44ad" },
+  { id: "sensor",       label: "Sensors",         icon: "📡", color: "#2980b9" },
+  { id: "other",        label: "Other",           icon: "📦", color: "#555" },
 ];
 
 const BUILTIN_TEMPLATES = [
-  { id: "t-resistor",   group: "electronic", name: "Widerstand",           icon: "🟫", color: "#8b6914",
+  { id: "t-resistor",   group: "electronic", name: "Resistor",             icon: "🟫", color: "#8b6914",
     fields: [
-      { key: "value",     label: "Wert",           type: "text",   unit: "Ω",  required: true,  hint: "z.B. 10k, 4.7M" },
-      { key: "tolerance", label: "Toleranz",       type: "select", options: ["1%","5%","10%","0.1%","0.5%"] },
-      { key: "power",     label: "Leistung",       type: "text",   unit: "W",  hint: "z.B. 0.25, 0.5" },
-      { key: "footprint", label: "Gehäuse",        type: "select", options: ["0402","0603","0805","1206","2512","THT axial"] },
+      { key: "value",     label: "Value",          type: "text",   unit: "Ω",  required: true,  hint: "e.g. 10k, 4.7M" },
+      { key: "tolerance", label: "Tolerance",      type: "select", options: ["1%","5%","10%","0.1%","0.5%"] },
+      { key: "power",     label: "Power",          type: "text",   unit: "W",  hint: "e.g. 0.25, 0.5" },
+      { key: "footprint", label: "Package",        type: "select", options: ["0402","0603","0805","1206","2512","THT axial"] },
     ]},
-  { id: "t-capacitor",  group: "electronic", name: "Kondensator",          icon: "🔵", color: "#1a5fa3",
+  { id: "t-capacitor",  group: "electronic", name: "Capacitor",            icon: "🔵", color: "#1a5fa3",
     fields: [
-      { key: "value",    label: "Kapazität",       type: "text",   unit: "F",  required: true, hint: "z.B. 100nF, 10µF" },
-      { key: "voltage",  label: "Spannungsfestigkeit", type: "text", unit: "V", required: true },
-      { key: "type",     label: "Typ",             type: "select", options: ["MLCC","Elektrolyt","Tantal","Folie"] },
-      { key: "footprint",label: "Gehäuse",         type: "select", options: ["0402","0603","0805","1206","THT radial"] },
+      { key: "value",    label: "Capacitance",     type: "text",   unit: "F",  required: true, hint: "e.g. 100nF, 10µF" },
+      { key: "voltage",  label: "Voltage rating",  type: "text",   unit: "V",  required: true },
+      { key: "type",     label: "Type",            type: "select", options: ["MLCC","Electrolytic","Tantalum","Film"] },
+      { key: "footprint",label: "Package",         type: "select", options: ["0402","0603","0805","1206","THT radial"] },
     ]},
-  { id: "t-stepper",    group: "drive",      name: "Schrittmotor",         icon: "⚙️", color: "#e8700a",
+  { id: "t-stepper",    group: "drive",      name: "Stepper motor",        icon: "⚙️", color: "#e8700a",
     fields: [
-      { key: "flange",   label: "Flansch",         type: "select", options: ["NEMA8","NEMA11","NEMA14","NEMA17","NEMA23","NEMA34"], required: true },
-      { key: "steps",    label: "Schritte/U",      type: "select", options: ["200 (1.8°)","400 (0.9°)","48 (7.5°)"], required: true },
-      { key: "torque",   label: "Haltemoment",     type: "number", unit: "Nm" },
-      { key: "current",  label: "Phasenstrom",     type: "number", unit: "A" },
-      { key: "length",   label: "Motorlänge",      type: "number", unit: "mm" },
-      { key: "shaft_d",  label: "Wellendurchm.",   type: "number", unit: "mm" },
-      { key: "wiring",   label: "Wicklung",        type: "select", options: ["Bipolar 4-Draht","Unipolar 6-Draht","8-Draht"] },
+      { key: "flange",   label: "Flange",          type: "select", options: ["NEMA8","NEMA11","NEMA14","NEMA17","NEMA23","NEMA34"], required: true },
+      { key: "steps",    label: "Steps/rev",       type: "select", options: ["200 (1.8°)","400 (0.9°)","48 (7.5°)"], required: true },
+      { key: "torque",   label: "Holding torque",  type: "number", unit: "Nm" },
+      { key: "current",  label: "Phase current",   type: "number", unit: "A" },
+      { key: "length",   label: "Motor length",    type: "number", unit: "mm" },
+      { key: "shaft_d",  label: "Shaft diam.",     type: "number", unit: "mm" },
+      { key: "wiring",   label: "Winding",         type: "select", options: ["Bipolar 4-wire","Unipolar 6-wire","8-wire"] },
     ]},
-  { id: "t-dcmotor",    group: "drive",      name: "DC-Motor",             icon: "⚡", color: "#e8700a",
+  { id: "t-dcmotor",    group: "drive",      name: "DC Motor",             icon: "⚡", color: "#e8700a",
     fields: [
-      { key: "voltage",  label: "Nennspannung",    type: "number", unit: "V",  required: true },
-      { key: "rpm",      label: "Drehzahl",        type: "number", unit: "rpm" },
-      { key: "torque",   label: "Nennmoment",      type: "number", unit: "Nm" },
-      { key: "current",  label: "Nennstrom",       type: "number", unit: "A" },
-      { key: "shaft_d",  label: "Wellendurchm.",   type: "number", unit: "mm" },
-      { key: "gearbox",  label: "Getriebe",        type: "text",   hint: "z.B. 1:50" },
+      { key: "voltage",  label: "Rated voltage",   type: "number", unit: "V",  required: true },
+      { key: "rpm",      label: "Speed",           type: "number", unit: "rpm" },
+      { key: "torque",   label: "Rated torque",    type: "number", unit: "Nm" },
+      { key: "current",  label: "Rated current",   type: "number", unit: "A" },
+      { key: "shaft_d",  label: "Shaft diam.",     type: "number", unit: "mm" },
+      { key: "gearbox",  label: "Gearbox",         type: "text",   hint: "e.g. 1:50" },
     ]},
-  { id: "t-pneumatic",  group: "pneumatic",  name: "Pneumatikzylinder",    icon: "💨", color: "#1a9fa3",
+  { id: "t-pneumatic",  group: "pneumatic",  name: "Pneumatic cylinder",   icon: "💨", color: "#1a9fa3",
     fields: [
-      { key: "bore",     label: "Bohrung",         type: "number", unit: "mm", required: true },
-      { key: "stroke",   label: "Hub",             type: "number", unit: "mm", required: true },
-      { key: "type",     label: "Bauform",         type: "select", options: ["Einfachwirkend","Doppeltwirkend","Kompaktzylinder","Rundzylinder","ISO 15552"], required: true },
-      { key: "pressure", label: "Max. Druck",      type: "number", unit: "bar" },
-      { key: "port",     label: "Anschluss",       type: "select", options: ["M5","G1/8","G1/4","G3/8","G1/2"] },
-      { key: "cushion",  label: "Dämpfung",        type: "select", options: ["Ohne","Einstellbar","Fest"] },
+      { key: "bore",     label: "Bore",            type: "number", unit: "mm", required: true },
+      { key: "stroke",   label: "Stroke",          type: "number", unit: "mm", required: true },
+      { key: "type",     label: "Type",            type: "select", options: ["Single-acting","Double-acting","Compact","Round","ISO 15552"], required: true },
+      { key: "pressure", label: "Max. pressure",   type: "number", unit: "bar" },
+      { key: "port",     label: "Port",            type: "select", options: ["M5","G1/8","G1/4","G3/8","G1/2"] },
+      { key: "cushion",  label: "Cushioning",      type: "select", options: ["None","Adjustable","Fixed"] },
     ]},
-  { id: "t-linear",     group: "linear",     name: "Linearführung",        icon: "📏", color: "#9b59b6",
+  { id: "t-linear",     group: "linear",     name: "Linear guide",         icon: "📏", color: "#9b59b6",
     fields: [
-      { key: "series",   label: "Baureihe",        type: "select", options: ["MGN9","MGN12","MGN15","SBR12","SBR16","SBR20","HGR15","HGR20","HGR25","HGR30"], required: true },
-      { key: "length",   label: "Schienenlänge",   type: "number", unit: "mm", required: true },
-      { key: "carriages",label: "Anz. Wagen",      type: "number" },
-      { key: "class",    label: "Genauigkeit",     type: "select", options: ["Normal","H (hoch)","P (präzision)"] },
-      { key: "preload",  label: "Vorspannung",     type: "select", options: ["Z0","Z1","Z2","Z3"] },
+      { key: "series",   label: "Series",          type: "select", options: ["MGN9","MGN12","MGN15","SBR12","SBR16","SBR20","HGR15","HGR20","HGR25","HGR30"], required: true },
+      { key: "length",   label: "Rail length",     type: "number", unit: "mm", required: true },
+      { key: "carriages",label: "No. of carriages",type: "number" },
+      { key: "class",    label: "Accuracy",        type: "select", options: ["Normal","H (high)","P (precision)"] },
+      { key: "preload",  label: "Preload",         type: "select", options: ["Z0","Z1","Z2","Z3"] },
     ]},
-  { id: "t-ballscrew",  group: "linear",     name: "Kugelgewindespindel",  icon: "🔩", color: "#9b59b6",
+  { id: "t-ballscrew",  group: "linear",     name: "Ball screw",           icon: "🔩", color: "#9b59b6",
     fields: [
-      { key: "diameter", label: "Nenndurchm.",     type: "number", unit: "mm", required: true },
-      { key: "pitch",    label: "Steigung",        type: "number", unit: "mm", required: true, hint: "z.B. 2, 4, 5, 10" },
-      { key: "length",   label: "Gesamtlänge",     type: "number", unit: "mm", required: true },
-      { key: "nut",      label: "Muttertyp",       type: "select", options: ["Einfach","Doppelt vorgespannt","Flanschmutter"] },
-      { key: "accuracy", label: "Genauigkeit",     type: "select", options: ["C7","C5","C3"] },
+      { key: "diameter", label: "Nom. diameter",   type: "number", unit: "mm", required: true },
+      { key: "pitch",    label: "Lead",            type: "number", unit: "mm", required: true, hint: "e.g. 2, 4, 5, 10" },
+      { key: "length",   label: "Total length",    type: "number", unit: "mm", required: true },
+      { key: "nut",      label: "Nut type",        type: "select", options: ["Single","Double preloaded","Flange nut"] },
+      { key: "accuracy", label: "Accuracy",        type: "select", options: ["C7","C5","C3"] },
     ]},
-  { id: "t-bearing",    group: "mechanic",   name: "Lager",                icon: "⭕", color: "#27ae60",
+  { id: "t-bearing",    group: "mechanic",   name: "Bearing",              icon: "⭕", color: "#27ae60",
     fields: [
-      { key: "type",     label: "Lagertyp",        type: "select", options: ["Rillenkugellager","Pendelkugellager","Kegelrollenlager","Nadellager","Linearkugellager","Gleitlager"], required: true },
-      { key: "desig",    label: "Bezeichnung",     type: "text",   hint: "z.B. 608, 6205, LM12UU" },
-      { key: "id",       label: "Innen-Ø (d)",     type: "number", unit: "mm", required: true },
-      { key: "od",       label: "Außen-Ø (D)",     type: "number", unit: "mm" },
-      { key: "width",    label: "Breite (B)",      type: "number", unit: "mm" },
-      { key: "seal",     label: "Abdichtung",      type: "select", options: ["offen","Z","2Z","RS","2RS"] },
+      { key: "type",     label: "Bearing type",    type: "select", options: ["Deep groove ball","Self-aligning ball","Tapered roller","Needle","Linear ball","Plain"], required: true },
+      { key: "desig",    label: "Designation",     type: "text",   hint: "e.g. 608, 6205, LM12UU" },
+      { key: "id",       label: "Bore Ø (d)",      type: "number", unit: "mm", required: true },
+      { key: "od",       label: "Outer Ø (D)",     type: "number", unit: "mm" },
+      { key: "width",    label: "Width (B)",       type: "number", unit: "mm" },
+      { key: "seal",     label: "Seal",            type: "select", options: ["Open","Z","2Z","RS","2RS"] },
     ]},
-  { id: "t-damper",     group: "mechanic",   name: "Dämpfer / Feder",      icon: "🔴", color: "#e74c3c",
+  { id: "t-damper",     group: "mechanic",   name: "Damper / Spring",      icon: "🔴", color: "#e74c3c",
     fields: [
-      { key: "type",     label: "Typ",             type: "select", options: ["Gummidämpfer","Hydraulisch","Elastomer","Gasdruckfeder","Zugfeder","Druckfeder"], required: true },
-      { key: "stroke",   label: "Hub",             type: "number", unit: "mm" },
-      { key: "force",    label: "Kraft",           type: "number", unit: "N" },
-      { key: "thread",   label: "Gewinde",         type: "text",   hint: "z.B. M10×1.25" },
-      { key: "length",   label: "Einbaulänge",     type: "number", unit: "mm" },
+      { key: "type",     label: "Type",            type: "select", options: ["Rubber damper","Hydraulic","Elastomer","Gas spring","Extension spring","Compression spring"], required: true },
+      { key: "stroke",   label: "Stroke",          type: "number", unit: "mm" },
+      { key: "force",    label: "Force",           type: "number", unit: "N" },
+      { key: "thread",   label: "Thread",          type: "text",   hint: "e.g. M10×1.25" },
+      { key: "length",   label: "Installed length",type: "number", unit: "mm" },
     ]},
-  { id: "t-screw",      group: "normpart",   name: "Schraube",             icon: "🔩", color: "#7f8c8d",
+  { id: "t-screw",      group: "normpart",   name: "Screw",                icon: "🔩", color: "#7f8c8d",
     fields: [
-      { key: "norm",     label: "Norm",            type: "select", options: ["ISO 4762","ISO 7380","ISO 10642","DIN 933","DIN 931","ISO 4026"], required: true },
-      { key: "thread",   label: "Gewinde",         type: "text",   required: true, hint: "z.B. M3, M4, M5" },
-      { key: "length",   label: "Länge",           type: "number", unit: "mm", required: true },
-      { key: "material", label: "Material",        type: "select", options: ["Stahl 8.8","Stahl 10.9","Edelstahl A2","Edelstahl A4","Messing"] },
-      { key: "drive",    label: "Antrieb",         type: "select", options: ["Innensechskant","Torx","Kreuzschlitz","Außensechskant"] },
+      { key: "norm",     label: "Standard",        type: "select", options: ["ISO 4762","ISO 7380","ISO 10642","DIN 933","DIN 931","ISO 4026"], required: true },
+      { key: "thread",   label: "Thread",          type: "text",   required: true, hint: "e.g. M3, M4, M5" },
+      { key: "length",   label: "Length",          type: "number", unit: "mm", required: true },
+      { key: "material", label: "Material",        type: "select", options: ["Steel 8.8","Steel 10.9","Stainless A2","Stainless A4","Brass"] },
+      { key: "drive",    label: "Drive",           type: "select", options: ["Hex socket","Torx","Phillips","Hex head"] },
     ]},
-  { id: "t-nut",        group: "normpart",   name: "Mutter",               icon: "⭕", color: "#7f8c8d",
+  { id: "t-nut",        group: "normpart",   name: "Nut",                  icon: "⭕", color: "#7f8c8d",
     fields: [
-      { key: "norm",     label: "Norm",            type: "select", options: ["ISO 4032","ISO 4033","DIN 985","ISO 7042","ISO 10511"], required: true },
-      { key: "thread",   label: "Gewinde",         type: "text",   required: true, hint: "z.B. M3, M4, M6" },
-      { key: "material", label: "Material",        type: "select", options: ["Stahl","Edelstahl A2","Edelstahl A4","Messing"] },
+      { key: "norm",     label: "Standard",        type: "select", options: ["ISO 4032","ISO 4033","DIN 985","ISO 7042","ISO 10511"], required: true },
+      { key: "thread",   label: "Thread",          type: "text",   required: true, hint: "e.g. M3, M4, M6" },
+      { key: "material", label: "Material",        type: "select", options: ["Steel","Stainless A2","Stainless A4","Brass"] },
     ]},
-  { id: "t-snap",       group: "normpart",   name: "Rastelement",          icon: "🔘", color: "#7f8c8d",
+  { id: "t-snap",       group: "normpart",   name: "Retaining ring",       icon: "🔘", color: "#7f8c8d",
     fields: [
-      { key: "norm",     label: "Norm",            type: "text",   required: true, hint: "z.B. DIN 1481, ISO 8752" },
-      { key: "size",     label: "Größe",           type: "text",   required: true, hint: "z.B. 3×22" },
-      { key: "material", label: "Material",        type: "select", options: ["Federstahl","Edelstahl A2","Edelstahl A4","Messing"] },
+      { key: "norm",     label: "Standard",        type: "text",   required: true, hint: "e.g. DIN 1481, ISO 8752" },
+      { key: "size",     label: "Size",            type: "text",   required: true, hint: "e.g. 3×22" },
+      { key: "material", label: "Material",        type: "select", options: ["Spring steel","Stainless A2","Stainless A4","Brass"] },
     ]},
-  { id: "t-profile",    group: "structure",  name: "Profil / Strukturteil",icon: "📐", color: "#16a085",
+  { id: "t-profile",    group: "structure",  name: "Profile / Structure",  icon: "📐", color: "#16a085",
     fields: [
-      { key: "type",     label: "Profiltyp",       type: "select", options: ["Aluprofilsystem","Rechteckrohr","Rundrohr","L-Profil","U-Profil","T-Profil","Flachstahl"], required: true },
-      { key: "size",     label: "Abmessung",       type: "text",   required: true, hint: "z.B. 40×40, Ø25×2" },
-      { key: "length",   label: "Länge",           type: "number", unit: "mm", required: true },
-      { key: "material", label: "Material",        type: "select", options: ["Aluminium","Stahl S235","Edelstahl","Messing","Kunststoff"] },
-      { key: "slot",     label: "Nut",             type: "text",   hint: "z.B. Nut 8, Nut 6" },
+      { key: "type",     label: "Profile type",    type: "select", options: ["Alu profile system","Rectangular tube","Round tube","L-profile","U-profile","T-profile","Flat bar"], required: true },
+      { key: "size",     label: "Dimensions",      type: "text",   required: true, hint: "e.g. 40×40, Ø25×2" },
+      { key: "length",   label: "Length",          type: "number", unit: "mm", required: true },
+      { key: "material", label: "Material",        type: "select", options: ["Aluminium","Steel S235","Stainless steel","Brass","Plastic"] },
+      { key: "slot",     label: "Slot",            type: "text",   hint: "e.g. Slot 8, Slot 6" },
     ]},
   { id: "t-sensor",     group: "sensor",     name: "Sensor",               icon: "📡", color: "#2980b9",
     fields: [
-      { key: "type",     label: "Sensortyp",       type: "select", options: ["Endschalter","Induktiv","Kapazitiv","Optisch","Ultraschall","Temperatursensor","Drucksensor","IMU","Encoder","Hall-Sensor"], required: true },
-      { key: "voltage",  label: "Versorgung",      type: "text",   unit: "V" },
-      { key: "output",   label: "Ausgang",         type: "select", options: ["Digital NPN","Digital PNP","Analog 0-10V","Analog 4-20mA","I2C","SPI","UART","Quadratur"] },
-      { key: "range",    label: "Messbereich",     type: "text",   hint: "z.B. 0-100mm" },
+      { key: "type",     label: "Sensor type",     type: "select", options: ["Limit switch","Inductive","Capacitive","Optical","Ultrasonic","Temperature","Pressure","IMU","Encoder","Hall sensor"], required: true },
+      { key: "voltage",  label: "Supply",          type: "text",   unit: "V" },
+      { key: "output",   label: "Output",          type: "select", options: ["Digital NPN","Digital PNP","Analog 0-10V","Analog 4-20mA","I2C","SPI","UART","Quadrature"] },
+      { key: "range",    label: "Measuring range", type: "text",   hint: "e.g. 0-100mm" },
     ]},
-  { id: "t-cable",      group: "connection", name: "Kabel / Leitung",      icon: "🔌", color: "#8e44ad",
+  { id: "t-cable",      group: "connection", name: "Cable / Wire",         icon: "🔌", color: "#8e44ad",
     fields: [
-      { key: "type",     label: "Leitungstyp",     type: "select", options: ["Einzelader","Steuerleitung","Schleppkettenleitung","Koaxial","Netzleitung","Datenkabel"], required: true },
-      { key: "cross",    label: "Querschnitt",     type: "text",   unit: "mm²", required: true, hint: "z.B. 0.25, 0.5, 1.5" },
-      { key: "cores",    label: "Aderanzahl",      type: "number" },
-      { key: "length",   label: "Länge",           type: "number", unit: "m" },
-      { key: "shielded", label: "Geschirmt",       type: "select", options: ["Nein","Ja"] },
+      { key: "type",     label: "Cable type",      type: "select", options: ["Single core","Control cable","Drag chain cable","Coaxial","Power cable","Data cable"], required: true },
+      { key: "cross",    label: "Cross-section",   type: "text",   unit: "mm²", required: true, hint: "e.g. 0.25, 0.5, 1.5" },
+      { key: "cores",    label: "No. of cores",    type: "number" },
+      { key: "length",   label: "Length",          type: "number", unit: "m" },
+      { key: "shielded", label: "Shielded",        type: "select", options: ["No","Yes"] },
     ]},
 ];
 
@@ -277,26 +277,51 @@ Include 6-10 shops. Prioritize:
 - Use your training knowledge — no need to search, you know these shops well
 Do NOT include AliExpress, Mouser, DigiKey, LCSC, Misumi, RS Components — already added.`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: apiHeaders(apiKey),
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1500,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  if (!res.ok) throw new Error("API error");
-  const data = await res.json();
-  const text = data.content?.map(c => c.text || "").join("") || "[]";
+  const text = await callAI([{ role: "user", content: prompt }], 1500, apiKey);
   return JSON.parse(text.replace(/```json|```/g, "").trim());
 }
 
-// ── API Key Management ────────────────────────────────────────────────────────
-const KEY_STORAGE = "partsdb-api-key";
-const getApiKey = () => { try { return localStorage.getItem(KEY_STORAGE) || ""; } catch { return ""; } };
-const saveApiKey = (k) => { try { localStorage.setItem(KEY_STORAGE, k); } catch {} };
-const clearApiKey = () => { try { localStorage.removeItem(KEY_STORAGE); } catch {} };
+// ── API Key & Provider Management ────────────────────────────────────────────
+const KEY_STORAGE      = "partsdb-api-key";
+const PROVIDER_STORAGE = "partsdb-provider";
+const ENDPOINT_STORAGE = "partsdb-endpoint";
+const getApiKey         = () => { try { return localStorage.getItem(KEY_STORAGE)      || ""; } catch { return ""; } };
+const saveApiKey        = (k) => { try { localStorage.setItem(KEY_STORAGE, k);                } catch {} };
+const clearApiKey       = () => { try { localStorage.removeItem(KEY_STORAGE);                 } catch {} };
+const getProvider       = () => { try { return localStorage.getItem(PROVIDER_STORAGE) || "anthropic"; } catch { return "anthropic"; } };
+const saveProvider      = (p) => { try { localStorage.setItem(PROVIDER_STORAGE, p);          } catch {} };
+const getCustomEndpoint = () => { try { return localStorage.getItem(ENDPOINT_STORAGE) || ""; } catch { return ""; } };
+const saveCustomEndpoint= (u) => { try { localStorage.setItem(ENDPOINT_STORAGE, u);          } catch {} };
+
+const PROVIDERS = {
+  anthropic: {
+    label: "Anthropic Claude",
+    model: "claude-sonnet-4-6",
+    endpoint: "https://api.anthropic.com/v1/messages",
+    keyPlaceholder: "sk-ant-api03-…",
+    keyHint: "Starts with sk-ant-",
+    guideUrl: "https://console.anthropic.com/settings/keys",
+    guideSteps: ["Go to console.anthropic.com", "Sign in / Create account", "\"API Keys\" → \"Create Key\"", "Copy the key and paste it here"],
+  },
+  openai: {
+    label: "OpenAI (GPT-4o)",
+    model: "gpt-4o-mini",
+    endpoint: "https://api.openai.com/v1/chat/completions",
+    keyPlaceholder: "sk-…",
+    keyHint: "Starts with sk-",
+    guideUrl: "https://platform.openai.com/api-keys",
+    guideSteps: ["Go to platform.openai.com", "Sign in / Create account", "\"API Keys\" → \"Create new secret key\"", "Copy the key and paste it here"],
+  },
+  compatible: {
+    label: "OpenAI-compatible (Groq, Ollama, …)",
+    model: "llama-3.3-70b-versatile",
+    endpoint: "",
+    keyPlaceholder: "Provider API key",
+    keyHint: "Format depends on provider",
+    guideUrl: "",
+    guideSteps: ["Enter your API endpoint URL (e.g. https://api.groq.com/openai/v1/chat/completions)", "Enter the provider API key"],
+  },
+};
 
 function apiHeaders(key) {
   return {
@@ -305,6 +330,122 @@ function apiHeaders(key) {
     "anthropic-version": "2023-06-01",
     "anthropic-dangerous-direct-browser-access": "true",
   };
+}
+
+function openaiHeaders(key) {
+  return { "Content-Type": "application/json", "Authorization": `Bearer ${key}` };
+}
+
+async function callAI(messages: {role:string,content:string}[], maxTokens: number, apiKey?: string): Promise<string> {
+  const key = apiKey ?? getApiKey();
+  const provider = getProvider();
+  const cfg = PROVIDERS[provider] || PROVIDERS.anthropic;
+
+  if (provider === "anthropic") {
+    const res = await fetch(cfg.endpoint, {
+      method: "POST",
+      headers: apiHeaders(key),
+      body: JSON.stringify({ model: cfg.model, max_tokens: maxTokens, messages }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.statusText); }
+    const data = await res.json();
+    return (data.content?.filter((c:any) => c.type === "text").map((c:any) => c.text) || []).join("");
+  } else {
+    const endpoint = (provider === "compatible" && getCustomEndpoint()) || cfg.endpoint;
+    if (!endpoint) throw new Error("No endpoint URL configured");
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: openaiHeaders(key),
+      body: JSON.stringify({ model: cfg.model, max_tokens: maxTokens, messages }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.statusText); }
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || "";
+  }
+}
+
+// ── Tavily & Nexar API Keys ───────────────────────────────────────────────────
+const TAVILY_KEY_STORAGE  = "partsdb-tavily-key";
+const NEXAR_ID_STORAGE    = "partsdb-nexar-id";
+const NEXAR_SEC_STORAGE   = "partsdb-nexar-secret";
+const NEXAR_TOKEN_STORAGE = "partsdb-nexar-token"; // cache: {token, exp}
+const getTavilyKey   = () => { try { return localStorage.getItem(TAVILY_KEY_STORAGE) || ""; } catch { return ""; } };
+const saveTavilyKey  = (k) => { try { localStorage.setItem(TAVILY_KEY_STORAGE, k); } catch {} };
+const getNexarId     = () => { try { return localStorage.getItem(NEXAR_ID_STORAGE) || ""; } catch { return ""; } };
+const saveNexarId    = (k) => { try { localStorage.setItem(NEXAR_ID_STORAGE, k); } catch {} };
+const getNexarSecret = () => { try { return localStorage.getItem(NEXAR_SEC_STORAGE) || ""; } catch { return ""; } };
+const saveNexarSecret= (k) => { try { localStorage.setItem(NEXAR_SEC_STORAGE, k); } catch {} };
+
+async function getNexarToken(): Promise<string> {
+  const id = getNexarId(); const sec = getNexarSecret();
+  if (!id || !sec) throw new Error("Nexar Client ID / Secret missing");
+  const cached = (() => { try { return JSON.parse(localStorage.getItem(NEXAR_TOKEN_STORAGE) || "null"); } catch { return null; } })();
+  if (cached && cached.exp > Date.now() + 60000) return cached.token;
+  const res = await fetch("https://identity.nexar.com/connect/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "client_credentials", client_id: id, client_secret: sec }),
+  });
+  if (!res.ok) { const e = await res.text(); throw new Error("Nexar token error: " + e); }
+  const d = await res.json();
+  try { localStorage.setItem(NEXAR_TOKEN_STORAGE, JSON.stringify({ token: d.access_token, exp: Date.now() + d.expires_in * 1000 })); } catch {}
+  return d.access_token;
+}
+
+async function nexarSearchMpn(mpn: string, name: string): Promise<{distributor:string,url:string,sku:string,price:number|null,stock:number|null,currency:string}[]> {
+  const token = await getNexarToken();
+  const q = mpn || name;
+  const query = `query($q:String!){supSearchMpn(q:$q,limit:3){results{part{mpn sellers(authorizedOnly:false){company{name homepage}offers{sku url inventoryLevel prices{quantity price currency}}}}}}}`;
+  const res = await fetch("https://api.nexar.com/graphql", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+    body: JSON.stringify({ query, variables: { q } }),
+  });
+  if (!res.ok) throw new Error("Nexar API error: " + res.statusText);
+  const data = await res.json();
+  const results: {distributor:string,url:string,sku:string,price:number|null,stock:number|null,currency:string}[] = [];
+  for (const r of data.data?.supSearchMpn?.results || []) {
+    for (const seller of r.part?.sellers || []) {
+      for (const offer of seller.offers || []) {
+        const price1 = offer.prices?.find((p:any) => p.quantity <= 1) || offer.prices?.[0];
+        results.push({
+          distributor: seller.company?.name || "?",
+          url: offer.url || seller.company?.homepage || "",
+          sku: offer.sku || "",
+          price: price1 ? parseFloat(price1.price) : null,
+          stock: offer.inventoryLevel ?? null,
+          currency: price1?.currency || "USD",
+        });
+      }
+    }
+  }
+  return results;
+}
+
+async function tavilySearchAliExpress(query: string): Promise<{title:string,url:string,snippet:string}[]> {
+  const key = getTavilyKey();
+  if (!key) throw new Error("Tavily API key missing");
+  const res = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ api_key: key, query: query + " site:aliexpress.com", search_depth: "basic", max_results: 5 }),
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.message || "Tavily error"); }
+  const d = await res.json();
+  return (d.results || []).map((r:any) => ({ title: r.title, url: r.url, snippet: r.content || "" }));
+}
+
+async function parseAliExpressResults(part: {name:string,mpn?:string}, webResults: {title:string,url:string,snippet:string}[]): Promise<{storeName:string,productUrl:string,priceEur:number|null,note:string}[]> {
+  if (!webResults.length) return [];
+  const prompt = `Aus diesen AliExpress-Suchergebnissen für das Bauteil "${part.mpn || part.name}":
+${webResults.map((r,i)=>`${i+1}. ${r.title}\n   URL: ${r.url}\n   ${r.snippet}`).join("\n\n")}
+
+Extrahiere Angebote als JSON-Array. Schätze Preise in EUR aus dem Titel/Snippet wenn erkennbar.
+Antworte NUR mit JSON-Array:
+[{"storeName":"Store-Name oder AliExpress","productUrl":"URL","priceEur":1.23,"note":"z.B. 10er Pack, kostenloser Versand"}]`;
+  const text = await callAI([{ role: "user", content: prompt }], 600);
+  const match = text.match(/\[[\s\S]*\]/);
+  return match ? JSON.parse(match[0]) : [];
 }
 
 // ── Claude API ────────────────────────────────────────────────────────────────
@@ -337,18 +478,7 @@ Format:
 
 Wenn du eine SKU nicht kennst, schreib "suchen". Gib 2-4 realistische Einträge.`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: apiHeaders(apiKey),
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1000,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.statusText); }
-  const data = await res.json();
-  const text = data.content?.map(c => c.text || "").join("") || "[]";
+  const text = await callAI([{ role: "user", content: prompt }], 1000, apiKey);
   const clean = text.replace(/```json|```/g, "").trim();
   return JSON.parse(clean);
 }
@@ -394,18 +524,7 @@ Report-Inhalt:
 ${rawText.slice(0, 8000)}
 ---`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: apiHeaders(apiKey),
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4000,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.statusText); }
-  const data = await res.json();
-  const text = data.content?.map(c => c.text || "").join("") || "{}";
+  const text = await callAI([{ role: "user", content: prompt }], 4000, apiKey);
   const clean = text.replace(/```json|```/g, "").trim();
   return JSON.parse(clean);
 }
@@ -425,14 +544,14 @@ const css = `
     --text: #e6edf3;
     --text2: #8b949e;
     --text3: #6e7681;
-    --green: #3fb950;
+    --green: #2ea043;
     --green2: #238636;
     --green3: #1a7f37;
-    --blue: #58a6ff;
-    --orange: #d29922;
+    --blue: #4493f8;
+    --orange: #bb8009;
     --red: #f85149;
-    --purple: #bc8cff;
-    --accent: #39d353;
+    --purple: #a371f7;
+    --accent: #2ea043;
   }
 
   body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; }
@@ -515,7 +634,7 @@ const css = `
   }
 
   .section-title {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text);
     display: flex;
@@ -579,11 +698,11 @@ const css = `
 
   .btn-sm { padding: 4px 10px; font-size: 12px; }
   .btn-ai {
-    background: linear-gradient(135deg, #1a3a4a, #1a2a3a);
-    color: var(--blue);
-    border-color: #2a4a6a;
+    background: #1c2d3f;
+    color: #4493f8;
+    border-color: #2d4a6b;
   }
-  .btn-ai:hover { background: linear-gradient(135deg, #1e4055, #1e3045); }
+  .btn-ai:hover { background: #243548; }
   .btn-ai:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .table-wrap {
@@ -797,7 +916,11 @@ const css = `
   .price-tag {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 12px;
-    color: var(--orange);
+    background: var(--bg3);
+    color: var(--text2);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 4px;
   }
 
   .spinner {
@@ -1091,12 +1214,12 @@ function AuthModal({ onClose, onLoggedIn }) {
   const handle = async () => {
     setLoading(true); setErr(""); setMsg(null);
     const sb = await getSb();
-    if (!sb) { setErr("Kein Supabase verbunden. Zuerst unter Einstellungen konfigurieren."); setLoading(false); return; }
+    if (!sb) { setErr("No Supabase connection. Please configure it in Settings first."); setLoading(false); return; }
     try {
       if (tab === "register") {
         const { error } = await sb.auth.signUp({ email, password });
         if (error) throw error;
-        setMsg("Bestätigungs-E-Mail gesendet! Bitte E-Mail bestätigen dann einloggen.");
+        setMsg("Confirmation email sent! Please confirm your email then sign in.");
       } else {
         const { data, error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -1112,23 +1235,23 @@ function AuthModal({ onClose, onLoggedIn }) {
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ width: 420 }}>
         <div className="auth-modal-tabs">
-          <button className={`auth-tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); setErr(""); setMsg(null); }}>Einloggen</button>
-          <button className={`auth-tab ${tab === "register" ? "active" : ""}`} onClick={() => { setTab("register"); setErr(""); setMsg(null); }}>Registrieren</button>
+          <button className={`auth-tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); setErr(""); setMsg(null); }}>Sign in</button>
+          <button className={`auth-tab ${tab === "register" ? "active" : ""}`} onClick={() => { setTab("register"); setErr(""); setMsg(null); }}>Register</button>
         </div>
 
         {tab === "register" && (
           <div style={{ background: "rgba(57,211,83,0.06)", border: "1px solid rgba(57,211,83,0.2)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>
-            🎉 <strong style={{ color: "var(--green)" }}>Beta — Cloud-Sync kostenlos.</strong>{" "}
-            Early-Access-Nutzer zahlen später dauerhaft weniger als Neukunden.
+            🎉 <strong style={{ color: "var(--green)" }}>Beta — Cloud sync is free.</strong>{" "}
+            Early access users will pay less permanently compared to new customers.
           </div>
         )}
 
         <div className="form-row">
-          <label>E-Mail</label>
+          <label>Email</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoFocus onKeyDown={e => e.key === "Enter" && handle()} />
         </div>
         <div className="form-row">
-          <label>Passwort {tab === "register" && <span style={{ color: "var(--text3)" }}>(mind. 8 Zeichen)</span>}</label>
+          <label>Password {tab === "register" && <span style={{ color: "var(--text3)" }}>(min. 8 characters)</span>}</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && handle()} />
         </div>
 
@@ -1136,9 +1259,9 @@ function AuthModal({ onClose, onLoggedIn }) {
         {msg && <div style={{ color: "var(--green)", fontSize: 12, marginBottom: 10 }}>✓ {msg}</div>}
 
         <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" disabled={loading || !email || !password} onClick={handle}>
-            {loading ? <><span className="spinner" /></> : tab === "login" ? "Einloggen" : "Konto erstellen"}
+            {loading ? <><span className="spinner" /></> : tab === "login" ? "Sign in" : "Create account"}
           </button>
         </div>
       </div>
@@ -1175,25 +1298,25 @@ function MigrationModal({ localData, userId, onDone, onSkip }) {
           <>
             <div style={{ textAlign: "center", padding: "16px 0" }}>
               <div style={{ fontSize: 36, marginBottom: 10 }}>☁️</div>
-              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Migration abgeschlossen!</div>
+              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Migration complete!</div>
               <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 20 }}>
-                Alle lokalen Daten sind jetzt in der Cloud gesichert.
+                All local data has been backed up to the cloud.
               </div>
-              <button className="btn btn-primary" onClick={onDone}>Los geht's →</button>
+              <button className="btn btn-primary" onClick={onDone}>Let's go →</button>
             </div>
           </>
         ) : (
           <>
-            <div className="modal-title">☁️ Lokale Daten in Cloud übertragen?</div>
+            <div className="modal-title">☁️ Transfer local data to cloud?</div>
             <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 16, lineHeight: 1.6 }}>
-              Es wurden <strong style={{ color: "var(--text)" }}>{total} lokale Einträge</strong> gefunden
-              ({localData.parts?.length || 0} Bauteile, {localData.projects?.length || 0} Projekte).
-              Sollen diese in dein Cloud-Konto übertragen werden?
+              Found <strong style={{ color: "var(--text)" }}>{total} local entries</strong>
+              ({localData.parts?.length || 0} parts, {localData.projects?.length || 0} projects).
+              Transfer them to your cloud account?
             </div>
             <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={onSkip}>Überspringen</button>
+              <button className="btn btn-secondary" onClick={onSkip}>Skip</button>
               <button className="btn btn-primary" disabled={migrating} onClick={migrate}>
-                {migrating ? <><span className="spinner" /> Übertrage…</> : "☁️ Jetzt übertragen"}
+                {migrating ? <><span className="spinner" /> Transferring…</> : "☁️ Transfer now"}
               </button>
             </div>
           </>
@@ -1205,49 +1328,35 @@ function MigrationModal({ localData, userId, onDone, onSkip }) {
 
 // ── Onboarding Screen ─────────────────────────────────────────────────────────
 function OnboardingScreen({ onDone }) {
-  const [step, setStep] = useState(1);
+  const [provider, setProvider] = useState("anthropic");
   const [key, setKey] = useState("");
+  const [endpoint, setEndpoint] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
+  const cfg = PROVIDERS[provider] || PROVIDERS.anthropic;
 
   const testKey = async () => {
     if (!key.trim()) return;
     setTesting(true); setTestResult(null);
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: apiHeaders(key.trim()),
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 10,
-          messages: [{ role: "user", content: "Hi" }],
-        }),
-      });
-      if (res.ok) {
-        setTestResult("ok");
-        saveApiKey(key.trim());
-        setTimeout(() => onDone(), 800);
-      } else {
-        const e = await res.json();
-        setTestResult("error:" + (e.error?.message || "Ungültiger Key"));
-      }
+      saveProvider(provider);
+      if (provider === "compatible") saveCustomEndpoint(endpoint.trim());
+      await callAI([{ role: "user", content: "Hi" }], 5, key.trim());
+      saveApiKey(key.trim());
+      setTestResult("ok");
+      setTimeout(() => onDone(), 800);
     } catch (e) {
       setTestResult("error:" + e.message);
     }
     setTesting(false);
   };
 
-  const S = { // styles shorthand
-    card: { background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 10, padding: "18px 20px", marginBottom: 12 },
-    num: { width: 28, height: 28, borderRadius: "50%", background: "var(--green2)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 },
-    numDone: { background: "var(--bg3)", color: "var(--text3)" },
-  };
+  const card = { background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 10, padding: "18px 20px", marginBottom: 12 };
 
   return (
     <div style={{ minHeight: "100vh", background: "#0d1117", display: "flex", flexDirection: "column" }}>
       <style>{css}</style>
 
-      {/* Header */}
       <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", background: "var(--bg2)", display: "flex", alignItems: "center", gap: 14 }}>
         <div className="logo"><span>⚡</span><span>PartsDB</span><span className="logo-badge">v1</span></div>
       </div>
@@ -1255,78 +1364,78 @@ function OnboardingScreen({ onDone }) {
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div style={{ maxWidth: 560, width: "100%" }}>
 
-          {/* Hero */}
-          <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>⚡</div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Willkommen bei PartsDB</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Welcome to PartsDB</h1>
             <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7 }}>
-              KI-gestützte Bauteil-Datenbank & BOM-Manager mit AliExpress-Händler-Suche.
-              <br />Kostenlos. Deine Daten bleiben lokal in deinem Browser.
+              AI-powered parts database &amp; BOM manager. Your data stays local in the browser.
             </p>
           </div>
 
-          {/* Was brauchst du */}
-          <div style={{ background: "rgba(57,211,83,0.06)", border: "1px solid rgba(57,211,83,0.2)", borderRadius: 10, padding: "16px 20px", marginBottom: 24, fontSize: 13, color: "var(--text2)", lineHeight: 1.7 }}>
-            <strong style={{ color: "var(--text)" }}>Warum ein Anthropic API Key?</strong><br />
-            Die KI-Funktionen (Händlersuche, BOM-Import, Lieferantensuche) laufen direkt über die Anthropic API.
-            Du zahlst nur für das was du nutzt — typisch <strong style={{ color: "var(--text)" }}>€0,01–0,05 pro Suche</strong>.
-            Der Key wird ausschließlich lokal in deinem Browser gespeichert, nie an einen Server übertragen.
-          </div>
-
-          {/* Steps */}
-          <div style={S.card}>
-            <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 16 }}>
-              <div style={{ ...S.num, ...(step > 1 ? S.numDone : {}) }}>{step > 1 ? "✓" : "1"}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>Anthropic-Konto erstellen</div>
-                <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 8, lineHeight: 1.6 }}>
-                  Kostenlos unter console.anthropic.com — du bekommst ein Startguthaben das für viele Stunden Nutzung reicht.
-                </div>
-                <a href="https://console.anthropic.com" target="_blank" rel="noopener"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--bg3)", border: "1px solid var(--border2)", color: "var(--blue)", padding: "6px 14px", borderRadius: 6, fontSize: 13, textDecoration: "none", fontWeight: 500 }}>
-                  🔗 console.anthropic.com ↗
-                </a>
-              </div>
+          {/* Provider selection */}
+          <div style={card}>
+            <div style={{ fontWeight: 600, marginBottom: 12 }}>1. Choose AI provider</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+              {Object.entries(PROVIDERS).map(([id, p]) => (
+                <button key={id} onClick={() => { setProvider(id); setTestResult(null); }}
+                  className={provider === id ? "btn btn-primary" : "btn btn-secondary"}
+                  style={{ fontSize: 12, padding: "5px 12px" }}>
+                  {p.label}
+                </button>
+              ))}
             </div>
-            <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 16 }}>
-              <div style={{ ...S.num, ...(step > 1 ? {} : S.numDone) }}>2</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>API Key erstellen</div>
-                <div style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>
-                  Im Anthropic Console: <span style={{ fontFamily: "IBM Plex Mono", background: "var(--bg3)", padding: "1px 6px", borderRadius: 3 }}>API Keys → Create Key</span> → Key kopieren
-                </div>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-              <div style={{ ...S.num }}>3</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>Key eintragen & loslegen</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input
-                    value={key}
-                    onChange={e => { setKey(e.target.value); setTestResult(null); }}
-                    placeholder="sk-ant-api03-…"
-                    type="password"
-                    style={{ flex: 1, background: "var(--bg3)", border: `1px solid ${testResult === "ok" ? "var(--green)" : testResult?.startsWith("error") ? "var(--red)" : "var(--border2)"}`, color: "var(--text)", padding: "8px 12px", borderRadius: 6, fontSize: 13, fontFamily: "IBM Plex Mono" }}
-                    onKeyDown={e => e.key === "Enter" && testKey()}
-                  />
-                  <button className="btn btn-primary" onClick={testKey} disabled={testing || !key.trim()}>
-                    {testing ? <><span className="spinner" />Prüfe…</> : testResult === "ok" ? "✓ Gültig!" : "Bestätigen"}
-                  </button>
-                </div>
-                {testResult?.startsWith("error:") && (
-                  <div style={{ color: "var(--red)", fontSize: 12, marginTop: 6 }}>
-                    ⚠️ {testResult.replace("error:", "")}
-                  </div>
-                )}
-              </div>
+            <div style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.7, background: "var(--bg3)", borderRadius: 6, padding: "10px 12px" }}>
+              {provider === "anthropic" && <><strong style={{ color: "var(--text)" }}>Recommended.</strong> Start free with credits. Approx. <strong style={{ color: "var(--text)" }}>€0.01–0.05 per search</strong>.</>}
+              {provider === "openai" && <><strong style={{ color: "var(--text)" }}>OpenAI GPT-4o-mini.</strong> Cheap and fast. Comparable quality for BOM import.</>}
+              {provider === "compatible" && <><strong style={{ color: "var(--text)" }}>Groq, Ollama, etc.</strong> Groq has a free tier with very fast latencies.</>}
             </div>
           </div>
 
-          {/* Skip */}
+          {/* Instructions */}
+          <div style={card}>
+            <div style={{ fontWeight: 600, marginBottom: 10 }}>2. Create API key</div>
+            {cfg.guideSteps.map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6, fontSize: 13, color: "var(--text2)" }}>
+                <span style={{ color: "var(--blue)", fontWeight: 600, flexShrink: 0 }}>{i + 1}.</span>
+                <span>{step}</span>
+              </div>
+            ))}
+            {cfg.guideUrl && (
+              <a href={cfg.guideUrl} target="_blank" rel="noopener"
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--bg3)", border: "1px solid var(--border2)", color: "var(--blue)", padding: "6px 14px", borderRadius: 6, fontSize: 13, textDecoration: "none", fontWeight: 500, marginTop: 8 }}>
+                🔗 {cfg.guideUrl} ↗
+              </a>
+            )}
+          </div>
+
+          {/* Key input */}
+          <div style={card}>
+            <div style={{ fontWeight: 600, marginBottom: 12 }}>3. Enter key &amp; get started</div>
+            {provider === "compatible" && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 4 }}>Endpoint URL</div>
+                <input value={endpoint} onChange={e => { setEndpoint(e.target.value); setTestResult(null); }}
+                  placeholder="https://api.groq.com/openai/v1/chat/completions"
+                  style={{ width: "100%", background: "var(--bg3)", border: "1px solid var(--border2)", color: "var(--text)", padding: "8px 12px", borderRadius: 6, fontSize: 12, fontFamily: "IBM Plex Mono", marginBottom: 8 }} />
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8 }}>
+              <input value={key} onChange={e => { setKey(e.target.value); setTestResult(null); }}
+                placeholder={cfg.keyPlaceholder} type="password"
+                style={{ flex: 1, background: "var(--bg3)", border: `1px solid ${testResult === "ok" ? "var(--green)" : testResult?.startsWith("error") ? "var(--red)" : "var(--border2)"}`, color: "var(--text)", padding: "8px 12px", borderRadius: 6, fontSize: 13, fontFamily: "IBM Plex Mono" }}
+                onKeyDown={e => e.key === "Enter" && testKey()} />
+              <button className="btn btn-primary" onClick={testKey} disabled={testing || !key.trim()}>
+                {testing ? <><span className="spinner" />Checking…</> : testResult === "ok" ? "✓ Valid!" : "Confirm"}
+              </button>
+            </div>
+            {testResult?.startsWith("error:") && (
+              <div style={{ color: "var(--red)", fontSize: 12, marginTop: 6 }}>⚠️ {testResult.replace("error:", "")}</div>
+            )}
+          </div>
+
           <div style={{ textAlign: "center" }}>
             <button className="btn btn-ghost" style={{ fontSize: 12, color: "var(--text3)" }} onClick={onDone}>
-              Erstmal ohne KI-Funktionen starten →
+              Start without AI features →
             </button>
           </div>
         </div>
@@ -1335,51 +1444,270 @@ function OnboardingScreen({ onDone }) {
   );
 }
 
+// ── Help Modal ────────────────────────────────────────────────────────────────
+const HELP_SECTIONS = [
+  {
+    title: "Parts", icon: "🔩",
+    items: [
+      { q: "How do I add a part?", a: "In the \"Parts\" tab click \"+ Add Part\". Enter name, MPN, and category." },
+      { q: "What is the AI supplier search?", a: "Click on a part → \"AI Search\" finds matching shops from your shop list and suggests SKU and price." },
+      { q: "How do I select a preferred supplier?", a: "In the part detail under \"Suppliers\" add an entry or save it via the Sourcing search. The preferred supplier will then appear in the BOM." },
+    ],
+  },
+  {
+    title: "BOM (Bill of Materials)", icon: "📋",
+    items: [
+      { q: "How do I create a project?", a: "In the BOM tab click \"+\" or a new project is automatically created during CSV/AI import." },
+      { q: "How do I add parts to the BOM?", a: "Select a project → \"+ Add Part\" → choose from the parts database and enter quantity/reference." },
+      { q: "Can I export the BOM?", a: "Yes: select a project → \"CSV Export\" in the top right." },
+    ],
+  },
+  {
+    title: "Import", icon: "📥",
+    items: [
+      { q: "Which formats are supported?", a: "CSV Import: KiCad, Eagle, Altium, generic CSV. AI Import: any text files, PDF text, free text — the AI detects the format automatically." },
+      { q: "How does AI import work?", a: "In the Import tab select \"AI Analysis\", upload a file or paste text. The AI extracts all parts and shows a preview. Review and then import." },
+      { q: "Import shows an empty project?", a: "After importing click \"→ Go to BOM\" — the newly created project will be automatically selected." },
+    ],
+  },
+  {
+    title: "Sourcing (AliExpress)", icon: "🛍️",
+    items: [
+      { q: "How does the vendor search work?", a: "In the Sourcing tab select a project → \"Start Search\". The AI suggests AliExpress vendors for each part (from AI training knowledge, no live web access)." },
+      { q: "How do I save a vendor as a supplier?", a: "After searching expand a store → \"Save as Supplier\". The entries then appear in the Parts database as suppliers." },
+      { q: "Prices are not current?", a: "The AI estimates prices from training knowledge — these are estimates, not live prices. Always verify on AliExpress." },
+    ],
+  },
+  {
+    title: "Shops", icon: "🏪",
+    items: [
+      { q: "What is the shop list?", a: "In the \"Shops\" tab you manage your preferred suppliers (Reichelt, Mouser, Conrad, AliExpress etc.). The AI search uses this list." },
+      { q: "How do I add a shop?", a: "In the Shops tab click \"+ Add Shop\" → enter name, region and URL." },
+      { q: "Can AI suggest shops for my region?", a: "Yes: \"Find shops for my region\" → enter your country → the AI suggests regional suppliers you can then add." },
+    ],
+  },
+  {
+    title: "API Key & AI", icon: "🔑",
+    items: [
+      { q: "Which provider is recommended?", a: "Anthropic Claude is most reliable for structured JSON output and BOM parsing. OpenAI GPT-4o-mini is slightly cheaper. Groq is free but less precise for complex BOMs." },
+      { q: "What does AI usage cost?", a: "Anthropic: ~€0.01–0.05 per search. OpenAI: similar. Groq: free rate limits. Costs are charged directly by your provider, not by PartsDB." },
+      { q: "Where is the key stored?", a: "Exclusively in your browser's localStorage. No server receives your key." },
+    ],
+  },
+];
+
+function HelpModal({ onClose }) {
+  const [openSection, setOpenSection] = useState(null);
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ width: 560, maxHeight: "80vh", overflowY: "auto" }}>
+        <div className="modal-title">? User Guide</div>
+        <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 20 }}>
+          PartsDB — AI-powered parts database &amp; BOM manager
+        </div>
+        {HELP_SECTIONS.map((section) => (
+          <div key={section.title} style={{ marginBottom: 8 }}>
+            <button onClick={() => setOpenSection(openSection === section.title ? null : section.title)}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: openSection === section.title ? "8px 8px 0 0" : 8, padding: "10px 14px", cursor: "pointer", color: "var(--text)", textAlign: "left" }}>
+              <span style={{ fontSize: 16 }}>{section.icon}</span>
+              <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{section.title}</span>
+              <span style={{ color: "var(--text3)", fontSize: 12 }}>{openSection === section.title ? "▲" : "▼"}</span>
+            </button>
+            {openSection === section.title && (
+              <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderTop: "none", borderRadius: "0 0 8px 8px", padding: "0 14px 10px" }}>
+                {section.items.map((item, i) => (
+                  <div key={i} style={{ padding: "12px 0", borderBottom: i < section.items.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: "var(--blue)" }}>{item.q}</div>
+                    <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6 }}>{item.a}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+        <div className="modal-actions" style={{ marginTop: 16 }}>
+          <button className="btn btn-primary" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── API Key Settings Modal ────────────────────────────────────────────────────
 function ApiKeyModal({ onClose }) {
+  const [section, setSection] = useState<"ai"|"sourcing">("ai");
+  const [provider, setProvider] = useState(getProvider());
   const [key, setKey] = useState(getApiKey());
+  const [endpoint, setEndpoint] = useState(getCustomEndpoint());
+  const [tavilyKey, setTavilyKey] = useState(getTavilyKey());
+  const [nexarId, setNexarId] = useState(getNexarId());
+  const [nexarSecret, setNexarSecret] = useState(getNexarSecret());
   const [testing, setTesting] = useState(false);
+  const [testingSourcing, setTestingSourcing] = useState(false);
   const [result, setResult] = useState(null);
+  const [sourcingResult, setSourcingResult] = useState(null);
+  const cfg = PROVIDERS[provider] || PROVIDERS.anthropic;
 
   const testAndSave = async () => {
-    if (!key.trim()) { clearApiKey(); onClose(); return; }
+    if (!key.trim()) { clearApiKey(); saveProvider(provider); onClose(); return; }
     setTesting(true); setResult(null);
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: apiHeaders(key.trim()),
-        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 10, messages: [{ role: "user", content: "Hi" }] }),
-      });
-      if (res.ok) { saveApiKey(key.trim()); setResult("ok"); setTimeout(onClose, 700); }
-      else { const e = await res.json(); setResult("error:" + (e.error?.message || "Fehler")); }
+      saveProvider(provider);
+      if (provider === "compatible") saveCustomEndpoint(endpoint.trim());
+      await callAI([{ role: "user", content: "Hi" }], 5, key.trim());
+      saveApiKey(key.trim());
+      setResult("ok");
+      setTimeout(onClose, 700);
     } catch (e) { setResult("error:" + e.message); }
     setTesting(false);
   };
 
+  const saveSourcingKeys = async () => {
+    setTestingSourcing(true); setSourcingResult(null);
+    try {
+      if (tavilyKey.trim()) saveTavilyKey(tavilyKey.trim());
+      if (nexarId.trim()) saveNexarId(nexarId.trim());
+      if (nexarSecret.trim()) saveNexarSecret(nexarSecret.trim());
+      if (nexarId.trim() && nexarSecret.trim()) {
+        await getNexarToken();
+      }
+      setSourcingResult("ok");
+    } catch (e: any) { setSourcingResult("error:" + e.message); }
+    setTestingSourcing(false);
+  };
+
+  const rowStyle = { marginBottom: 12 };
+  const labelStyle = { fontSize: 12, color: "var(--text2)", marginBottom: 4, display: "block" as const };
+
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ width: 480 }}>
-        <div className="modal-title">🔑 Anthropic API Key</div>
-        <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 16, lineHeight: 1.6 }}>
-          Dein Key wird nur lokal in deinem Browser gespeichert (localStorage) und nie an Server übertragen.
-        </div>
-        <div className="form-row">
-          <label>API Key</label>
-          <input value={key} onChange={e => { setKey(e.target.value); setResult(null); }} type="password"
-            placeholder="sk-ant-api03-…" style={{ fontFamily: "IBM Plex Mono" }} onKeyDown={e => e.key === "Enter" && testAndSave()} />
-        </div>
-        {result === "ok" && <div style={{ color: "var(--green)", fontSize: 13, marginBottom: 8 }}>✓ Key gültig und gespeichert!</div>}
-        {result?.startsWith("error:") && <div style={{ color: "var(--red)", fontSize: 13, marginBottom: 8 }}>⚠️ {result.replace("error:", "")}</div>}
+      <div className="modal" style={{ width: 540, maxHeight: "85vh", overflowY: "auto" }}>
+        <div className="modal-title">🔑 API Keys</div>
         <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 16 }}>
-          Key erstellen: <a href="https://console.anthropic.com" target="_blank" rel="noopener" style={{ color: "var(--blue)" }}>console.anthropic.com → API Keys ↗</a>
+          All keys are stored locally in your browser (localStorage) only, never transmitted to any server.
         </div>
-        <div className="modal-actions">
-          {getApiKey() && <button className="btn btn-danger" style={{ marginRight: "auto", padding: "6px 12px", fontSize: 13 }} onClick={() => { clearApiKey(); onClose(); }}>Key entfernen</button>}
-          <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
-          <button className="btn btn-primary" disabled={testing} onClick={testAndSave}>
-            {testing ? <><span className="spinner" /> Prüfe…</> : "Speichern & testen"}
+
+        {/* Section Tabs */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 20, borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+          <button onClick={() => setSection("ai")} className={section === "ai" ? "btn btn-primary" : "btn btn-secondary"} style={{ fontSize: 13 }}>
+            🤖 AI Provider
+          </button>
+          <button onClick={() => setSection("sourcing")} className={section === "sourcing" ? "btn btn-primary" : "btn btn-secondary"} style={{ fontSize: 13 }}>
+            🛍️ Live Sourcing
+            {(getNexarId() || getTavilyKey()) && <span style={{ marginLeft: 4, fontSize: 10, color: "var(--green)" }}>✓</span>}
           </button>
         </div>
+
+        {section === "ai" && <>
+          {/* Provider Tabs */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+            {Object.entries(PROVIDERS).map(([id, p]) => (
+              <button key={id} onClick={() => { setProvider(id); setResult(null); }}
+                className={provider === id ? "btn btn-primary" : "btn btn-secondary"}
+                style={{ fontSize: 12, padding: "5px 12px" }}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Instructions */}
+          <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, padding: "12px 14px", marginBottom: 16, fontSize: 12 }}>
+            <div style={{ fontWeight: 600, marginBottom: 8, color: "var(--text2)" }}>How to get your API key:</div>
+            {cfg.guideSteps.map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, marginBottom: 4, color: "var(--text2)" }}>
+                <span style={{ color: "var(--blue)", fontWeight: 600, flexShrink: 0 }}>{i + 1}.</span>
+                <span>{step}</span>
+              </div>
+            ))}
+            {cfg.guideUrl && (
+              <div style={{ marginTop: 8 }}>
+                <a href={cfg.guideUrl} target="_blank" rel="noopener" style={{ color: "var(--blue)", fontSize: 12 }}>
+                  → {cfg.guideUrl} ↗
+                </a>
+              </div>
+            )}
+          </div>
+
+          {provider === "compatible" && (
+            <div style={rowStyle}>
+              <label style={labelStyle}>Endpoint URL</label>
+              <input value={endpoint} onChange={e => { setEndpoint(e.target.value); setResult(null); }}
+                placeholder="https://api.groq.com/openai/v1/chat/completions"
+                style={{ fontFamily: "IBM Plex Mono", fontSize: 12, width: "100%" }} />
+            </div>
+          )}
+
+          <div style={rowStyle}>
+            <label style={labelStyle}>API Key ({cfg.keyHint})</label>
+            <input value={key} onChange={e => { setKey(e.target.value); setResult(null); }} type="password"
+              placeholder={cfg.keyPlaceholder} style={{ fontFamily: "IBM Plex Mono", width: "100%" }}
+              onKeyDown={e => e.key === "Enter" && testAndSave()} />
+          </div>
+
+          {result === "ok" && <div style={{ color: "var(--green)", fontSize: 13, marginBottom: 8 }}>✓ Key valid and saved!</div>}
+          {result?.startsWith("error:") && <div style={{ color: "var(--red)", fontSize: 13, marginBottom: 8 }}>⚠️ {result.replace("error:", "")}</div>}
+
+          <div className="modal-actions">
+            {getApiKey() && <button className="btn btn-danger" style={{ marginRight: "auto", padding: "6px 12px", fontSize: 13 }}
+              onClick={() => { clearApiKey(); onClose(); }}>Remove key</button>}
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" disabled={testing} onClick={testAndSave}>
+              {testing ? <><span className="spinner" /> Checking…</> : "Save & test"}
+            </button>
+          </div>
+        </>}
+
+        {section === "sourcing" && <>
+          {/* Nexar */}
+          <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, padding: "12px 14px", marginBottom: 16, fontSize: 12 }}>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>🏭 Nexar / Octopart</div>
+            <div style={{ color: "var(--text2)", marginBottom: 8 }}>Real stock levels from Mouser, DigiKey, LCSC, Farnell and others.</div>
+            <div style={{ color: "var(--text3)", lineHeight: 1.6 }}>
+              1. <a href="https://nexar.com/sign-up" target="_blank" rel="noopener" style={{ color: "var(--blue)" }}>nexar.com/sign-up ↗</a><br />
+              2. Sign in → <strong>Applications</strong> → <strong>New Application</strong><br />
+              3. Copy Client ID and Client Secret
+            </div>
+          </div>
+          <div style={rowStyle}>
+            <label style={labelStyle}>Nexar Client ID</label>
+            <input value={nexarId} onChange={e => { setNexarId(e.target.value); setSourcingResult(null); }}
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style={{ fontFamily: "IBM Plex Mono", fontSize: 12, width: "100%" }} />
+          </div>
+          <div style={rowStyle}>
+            <label style={labelStyle}>Nexar Client Secret</label>
+            <input value={nexarSecret} onChange={e => { setNexarSecret(e.target.value); setSourcingResult(null); }} type="password"
+              placeholder="Client Secret" style={{ fontFamily: "IBM Plex Mono", fontSize: 12, width: "100%" }} />
+          </div>
+
+          <div style={{ borderTop: "1px solid var(--border)", margin: "16px 0" }} />
+
+          {/* Tavily */}
+          <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, padding: "12px 14px", marginBottom: 16, fontSize: 12 }}>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>🔍 Tavily (AliExpress live search)</div>
+            <div style={{ color: "var(--text2)", marginBottom: 8 }}>Searches live on AliExpress — 1,000 searches/month free.</div>
+            <div style={{ color: "var(--text3)", lineHeight: 1.6 }}>
+              1. <a href="https://app.tavily.com" target="_blank" rel="noopener" style={{ color: "var(--blue)" }}>app.tavily.com ↗</a><br />
+              2. Create account → Copy API key
+            </div>
+          </div>
+          <div style={rowStyle}>
+            <label style={labelStyle}>Tavily API Key</label>
+            <input value={tavilyKey} onChange={e => { setTavilyKey(e.target.value); setSourcingResult(null); }}
+              placeholder="tvly-…" style={{ fontFamily: "IBM Plex Mono", fontSize: 12, width: "100%" }} />
+          </div>
+
+          {sourcingResult === "ok" && <div style={{ color: "var(--green)", fontSize: 13, marginBottom: 8 }}>✓ Keys saved{nexarId && nexarSecret ? " — Nexar token successfully retrieved!" : "!"}</div>}
+          {sourcingResult?.startsWith("error:") && <div style={{ color: "var(--red)", fontSize: 13, marginBottom: 8 }}>⚠️ {sourcingResult.replace("error:", "")}</div>}
+
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" disabled={testingSourcing} onClick={saveSourcingKeys}>
+              {testingSourcing ? <><span className="spinner" /> Checking…</> : "Save"}
+            </button>
+          </div>
+        </>}
+
       </div>
     </div>
   );
@@ -1396,6 +1724,7 @@ export default function SourcedApp() {
   const [loaded, setLoaded] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showKeyModal, setShowKeyModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const [apiKeySet, setApiKeySet] = useState(!!getApiKey());
   const [user, setUser] = useState(null);
   const [syncState, setSyncState] = useState("offline");
@@ -1425,8 +1754,17 @@ export default function SourcedApp() {
     })().catch(() => setLoaded(true));
   }, []);
 
+  const [pendingBomProjectId, setPendingBomProjectId] = useState<string|null>(null);
   useEffect(() => {
-    const handler = (e) => setTab(e.detail);
+    const handler = (e) => {
+      const d = e.detail;
+      if (d && typeof d === "object") {
+        setTab(d.tab);
+        if (d.projectId) setPendingBomProjectId(d.projectId);
+      } else {
+        setTab(d);
+      }
+    };
     window.addEventListener("switchTab", handler);
     return () => window.removeEventListener("switchTab", handler);
   }, []);
@@ -1467,8 +1805,8 @@ export default function SourcedApp() {
   };
 
   if (!loaded) return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100vh", background:"#0d1117", color:"#58a6ff", fontFamily:"IBM Plex Mono, monospace", fontSize:13 }}>
-      <div style={{ textAlign:"center" }}><div className="spinner" style={{ width:24, height:24, margin:"0 auto 12px" }} />Lade…</div>
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100vh", background:"#0d1117", color:"#4493f8", fontFamily:"IBM Plex Mono, monospace", fontSize:13 }}>
+      <div style={{ textAlign:"center" }}><div className="spinner" style={{ width:24, height:24, margin:"0 auto 12px" }} />Loading…</div>
     </div>
   );
 
@@ -1482,14 +1820,14 @@ export default function SourcedApp() {
           <div className="logo"><span>⚡</span><span>PartsDB</span><span className="logo-badge">v1</span></div>
           <nav className="nav">
             {[
-              { id: "bom",      icon: "📋", label: "BOM" },
-              { id: "parts",    icon: "🗄️", label: "Bauteile" },
-              { id: "sourcing", icon: "🛍️", label: "Sourcing" },
-              { id: "shops",    icon: "🏪", label: "Shops" },
-              { id: "import",   icon: "📥", label: "Import" },
+              { id: "bom",      label: "BOM" },
+              { id: "parts",    label: "Parts" },
+              { id: "sourcing", label: "Sourcing" },
+              { id: "shops",    label: "Shops" },
+              { id: "import",   label: "Import" },
             ].map(n => (
               <button key={n.id} className={`nav-btn ${tab === n.id ? "active" : ""}`} onClick={() => setTab(n.id)}>
-                {n.icon} {n.label}
+                {n.label}
               </button>
             ))}
           </nav>
@@ -1501,43 +1839,50 @@ export default function SourcedApp() {
                 <span className={`sync-dot ${syncState}`} />
                 {syncState === "online" ? "Sync ✓" : syncState === "syncing" ? "Sync…" : "Offline"}
               </div>
-              <button className="user-chip" onClick={handleLogout} title="Ausloggen">
+              <button className="user-chip" onClick={handleLogout} title="Sign out">
                 👤 {user.email?.split("@")[0]} ×
               </button>
             </div>
           ) : (
             <button className="btn btn-secondary btn-sm" onClick={() => setShowAuthModal(true)}>
-              ☁️ Anmelden / Registrieren
+              ☁️ Sign in / Register
             </button>
           )}
+
+          {/* Help */}
+          <button onClick={() => setShowHelpModal(true)}
+            style={{ display:"flex", alignItems:"center", gap:4, background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontSize:12, color:"var(--text2)", fontFamily:"IBM Plex Sans" }}>
+            ? Help
+          </button>
 
           {/* API Key */}
           <button onClick={() => setShowKeyModal(true)}
             style={{ display:"flex", alignItems:"center", gap:6, background: apiKeySet ? "rgba(57,211,83,0.1)" : "rgba(248,81,73,0.1)", border:`1px solid ${apiKeySet ? "rgba(57,211,83,0.3)" : "rgba(248,81,73,0.3)"}`, borderRadius:6, padding:"4px 10px", cursor:"pointer", fontSize:12, color: apiKeySet ? "var(--green)" : "var(--red)", fontFamily:"IBM Plex Sans" }}>
-            {apiKeySet ? "🔑 API Key" : "⚠️ Key fehlt"}
+            {apiKeySet ? "🔑 API Key" : "⚠️ Key missing"}
           </button>
         </header>
 
         {!user && (
           <div className="beta-bar">
             <span className="sync-dot offline" style={{ marginRight:6 }} />
-            Lokal gespeichert ·{" "}
-            <strong style={{ color:"var(--green)", marginLeft:4, marginRight:8 }}>Cloud-Sync kostenlos während der Beta</strong>
+            Stored locally ·{" "}
+            <strong style={{ color:"var(--green)", marginLeft:4, marginRight:8 }}>Cloud sync free during beta</strong>
             <button className="btn btn-ghost btn-sm" style={{ fontSize:11 }} onClick={() => setShowAuthModal(true)}>
-              ☁️ Jetzt aktivieren →
+              ☁️ Activate now →
             </button>
           </div>
         )}
 
         <main className="main">
           {tab === "parts"    && <PartsTab    parts={parts} saveParts={saveParts} suppliers={suppliers} saveSuppliers={saveSuppliers} shops={shops} />}
-          {tab === "bom"      && <BomTab      projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} parts={parts} suppliers={suppliers} />}
+          {tab === "bom"      && <BomTab      projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} parts={parts} suppliers={suppliers} initialProjectId={pendingBomProjectId} />}
           {tab === "import"   && <ImportTab   parts={parts} saveParts={saveParts} projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} />}
-          {tab === "sourcing" && <SourcingTab projects={projects} bomItems={bomItems} parts={parts} />}
+          {tab === "sourcing" && <SourcingTab projects={projects} bomItems={bomItems} parts={parts} suppliers={suppliers} saveSuppliers={saveSuppliers} />}
           {tab === "shops"    && <ShopsTab    shops={shops} saveShops={saveShops} />}
         </main>
 
         {showKeyModal  && <ApiKeyModal onClose={() => { setShowKeyModal(false); setApiKeySet(!!getApiKey()); }} />}
+        {showHelpModal && <HelpModal onClose={() => setShowHelpModal(false)} />}
         {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onLoggedIn={handleLoggedIn} />}
         {showMigration && localDataForMigration && user && (
           <MigrationModal localData={localDataForMigration} userId={user.id} onDone={handleMigrationDone} onSkip={() => setShowMigration(false)} />
@@ -1579,7 +1924,7 @@ function PartsTab({ parts, saveParts, suppliers, saveSuppliers, shops }) {
   };
 
   const handleDelete = (id) => {
-    if (!confirm("Bauteil löschen?")) return;
+    if (!confirm("Delete part?")) return;
     saveParts(parts.filter(p => p.id !== id));
     saveSuppliers(suppliers.filter(s => s.partId !== id));
   };
@@ -1590,17 +1935,17 @@ function PartsTab({ parts, saveParts, suppliers, saveSuppliers, shops }) {
     <div>
       <div className="section-header">
         <div className="section-title">
-          🗄️ Bauteil-Datenbank
-          <span className="badge">{parts.length} Einträge</span>
+          🗄️ Parts Database
+          <span className="badge">{parts.length} entries</span>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Bauteil hinzufügen</button>
+        <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Add Part</button>
       </div>
 
       <div className="search-bar">
-        <input className="search-input" placeholder="Suche nach Name, MPN, Hersteller…" value={query} onChange={e => setQuery(e.target.value)} />
+        <input className="search-input" placeholder="Search by name, MPN, manufacturer…" value={query} onChange={e => setQuery(e.target.value)} />
         <select style={{ background: "var(--bg2)", border: "1px solid var(--border)", color: "var(--text)", padding: "7px 12px", borderRadius: 6, fontSize: 13, fontFamily: "IBM Plex Sans" }}
           value={catFilter} onChange={e => setCatFilter(e.target.value)}>
-          <option value="">Alle Kategorien</option>
+          <option value="">All categories</option>
           {cats.map(c => {
             const g = PART_GROUPS.find(g => g.id === c);
             return <option key={c} value={c}>{g ? `${g.icon} ${g.label}` : c}</option>;
@@ -1610,20 +1955,20 @@ function PartsTab({ parts, saveParts, suppliers, saveSuppliers, shops }) {
 
       {filtered.length === 0 ? (
         <div className="empty-state">
-          <h3>Keine Bauteile {parts.length > 0 ? "gefunden" : "vorhanden"}</h3>
-          <p>{parts.length === 0 ? "Füge dein erstes Bauteil hinzu." : "Andere Suchbegriffe versuchen."}</p>
+          <h3>No parts {parts.length > 0 ? "found" : "yet"}</h3>
+          <p>{parts.length === 0 ? "Add your first part." : "Try different search terms."}</p>
         </div>
       ) : (
           <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Name / Beschreibung</th>
-                    <th>Kategorie</th>
+                    <th>Name / Description</th>
+                    <th>Category</th>
                     <th>MPN</th>
-                    <th>Schlüsselwerte</th>
-                    <th>Lager</th>
-                    <th>Lieferanten</th>
+                    <th>Key values</th>
+                    <th>Stock</th>
+                    <th>Suppliers</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -1664,7 +2009,7 @@ function PartsTab({ parts, saveParts, suppliers, saveSuppliers, shops }) {
                             )}
                             {(p.stock !== undefined && p.stock !== null) && (
                               <span style={{ fontSize: 11, color: stockWarn ? "var(--orange)" : "var(--text3)" }}>
-                                {stockWarn ? "⚠️" : ""} {p.stock} Stk{p.stockMin > 0 ? ` / min. ${p.stockMin}` : ""}
+                                {stockWarn ? "⚠️" : ""} {p.stock} pcs{p.stockMin > 0 ? ` / min. ${p.stockMin}` : ""}
                               </span>
                             )}
                           </div>
@@ -1679,7 +2024,7 @@ function PartsTab({ parts, saveParts, suppliers, saveSuppliers, shops }) {
                         </td>
                         <td>
                           <div style={{ display: "flex", gap: 4 }}>
-                            <button className="btn btn-ghost btn-sm" onClick={() => setDetailPart(p)}>Details</button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => setDetailPart(p)}>Detail</button>
                             <button className="btn btn-ghost btn-sm" onClick={() => setEditPart(p)}>✏️</button>
                             <button className="btn btn-danger btn-sm" onClick={() => handleDelete(p.id)}>🗑</button>
                           </div>
@@ -1754,9 +2099,9 @@ function PartModal({ part, onSave, onClose }) {
   if (step === "template") return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ width: 680, maxHeight: "88vh" }}>
-        <div className="modal-title">➕ Neues Bauteil — Kategorie wählen</div>
+        <div className="modal-title">➕ New Part — Choose Category</div>
         <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 16 }}>
-          Wähle eine Kategorie für optimale Felder, oder überspringe für ein leeres Formular.
+          Select a category for optimal fields, or skip for a blank form.
         </div>
 
         <div style={{ maxHeight: "60vh", overflowY: "auto", marginBottom: 14 }}>
@@ -1773,7 +2118,7 @@ function PartModal({ part, onSave, onClose }) {
                     onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "var(--bg3)"; }}>
                     <span style={{ fontSize: 20 }}>{t.icon}</span>
                     <span style={{ fontSize: 13, fontWeight: 600 }}>{t.name}</span>
-                    <span style={{ fontSize: 11, color: "var(--text3)" }}>{t.fields.length} Felder</span>
+                    <span style={{ fontSize: 11, color: "var(--text3)" }}>{t.fields.length} fields</span>
                   </div>
                 ))}
               </div>
@@ -1783,9 +2128,9 @@ function PartModal({ part, onSave, onClose }) {
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: 14 }}>
           <button className="btn btn-ghost" onClick={handleSkipTemplate} style={{ fontSize: 12, color: "var(--text3)" }}>
-            Ohne Kategorie fortfahren →
+            Continue without category →
           </button>
-          <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
         </div>
       </div>
     </div>
@@ -1803,24 +2148,24 @@ function PartModal({ part, onSave, onClose }) {
               {selectedTemplate.icon} {selectedTemplate.name}
             </span>
           )}
-          {part ? "Bauteil bearbeiten" : "Neues Bauteil"}
-          {!part && <button className="btn btn-ghost btn-sm" style={{ marginLeft: "auto", fontSize: 11 }} onClick={() => setStep("template")}>← Kategorie ändern</button>}
+          {part ? "Edit Part" : "New Part"}
+          {!part && <button className="btn btn-ghost btn-sm" style={{ marginLeft: "auto", fontSize: 11 }} onClick={() => setStep("template")}>← Change category</button>}
         </div>
 
         <div style={{ maxHeight: "70vh", overflowY: "auto", paddingRight: 4 }}>
           {/* Basis-Felder */}
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", letterSpacing: "0.07em", marginBottom: 8 }}>ALLGEMEIN</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", letterSpacing: "0.07em", marginBottom: 8 }}>GENERAL</div>
           <div className="form-grid">
             <div className="form-row" style={{ gridColumn: "1 / -1" }}>
-              <label>Name / Bezeichnung *</label>
-              <input value={form.name} onChange={e => set("name", e.target.value)} placeholder={selectedTemplate ? `z.B. ${selectedTemplate.name} XYZ` : "Bauteilname"} autoFocus />
+              <label>Name / Designation *</label>
+              <input value={form.name} onChange={e => set("name", e.target.value)} placeholder={selectedTemplate ? `e.g. ${selectedTemplate.name} XYZ` : "Part name"} autoFocus />
             </div>
             <div className="form-row">
-              <label>MPN / Hersteller-Nr.</label>
-              <input value={form.mpn || ""} onChange={e => set("mpn", e.target.value)} className="mono" placeholder="Bestellnummer / Norm" />
+              <label>MPN / Part number</label>
+              <input value={form.mpn || ""} onChange={e => set("mpn", e.target.value)} className="mono" placeholder="Order number / Standard" />
             </div>
             <div className="form-row">
-              <label>Hersteller</label>
+              <label>Manufacturer</label>
               <input value={form.manufacturer || ""} onChange={e => set("manufacturer", e.target.value)} />
             </div>
           </div>
@@ -1829,7 +2174,7 @@ function PartModal({ part, onSave, onClose }) {
           {fields.length > 0 && (
             <>
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", letterSpacing: "0.07em", margin: "16px 0 8px" }}>
-                {selectedTemplate.icon} {selectedTemplate.name.toUpperCase()} — TECHNISCHE DATEN
+                {selectedTemplate.icon} {selectedTemplate.name.toUpperCase()} — TECHNICAL DATA
               </div>
               <div className="form-grid">
                 {fields.map(f => (
@@ -1841,7 +2186,7 @@ function PartModal({ part, onSave, onClose }) {
                     </label>
                     {f.type === "select" ? (
                       <select value={attrs[f.key] || ""} onChange={e => setAttr(f.key, e.target.value)}>
-                        <option value="">— wählen —</option>
+                        <option value="">— select —</option>
                         {f.options?.map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
                     ) : f.type === "number" ? (
@@ -1856,18 +2201,18 @@ function PartModal({ part, onSave, onClose }) {
           )}
 
           {/* Lager */}
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", letterSpacing: "0.07em", margin: "16px 0 8px" }}>LAGER</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", letterSpacing: "0.07em", margin: "16px 0 8px" }}>INVENTORY</div>
           <div className="form-grid">
             <div className="form-row">
-              <label>Lagerort / Schublade</label>
-              <input value={form.drawer || ""} onChange={e => set("drawer", e.target.value)} placeholder="z.B. A3, Schublade 7, Regal B2" className="mono" />
+              <label>Storage location / Drawer</label>
+              <input value={form.drawer || ""} onChange={e => set("drawer", e.target.value)} placeholder="e.g. A3, Drawer 7, Shelf B2" className="mono" />
             </div>
             <div className="form-row">
-              <label>Lagerbestand</label>
+              <label>Stock quantity</label>
               <input type="number" min="0" value={form.stock || 0} onChange={e => set("stock", parseInt(e.target.value) || 0)} />
             </div>
             <div className="form-row">
-              <label>Mindestbestand</label>
+              <label>Minimum stock</label>
               <input type="number" min="0" value={form.stockMin || 0} onChange={e => set("stockMin", parseInt(e.target.value) || 0)} />
             </div>
             <div className="form-row">
@@ -1877,15 +2222,15 @@ function PartModal({ part, onSave, onClose }) {
           </div>
 
           <div className="form-row">
-            <label>Notizen</label>
-            <textarea value={form.notes || ""} onChange={e => set("notes", e.target.value)} style={{ minHeight: 56 }} placeholder="Interne Notizen, Alternativen…" />
+            <label>Notes</label>
+            <textarea value={form.notes || ""} onChange={e => set("notes", e.target.value)} style={{ minHeight: 56 }} placeholder="Internal notes, alternatives…" />
           </div>
         </div>
 
         <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={handleSave} disabled={!form.name}>
-            {part ? "Speichern" : "Hinzufügen"}
+            {part ? "Save" : "Add"}
           </button>
         </div>
       </div>
@@ -1921,7 +2266,7 @@ function PartDetailModal({ part, suppliers, shops, onClose, onSaveSuppliers }) {
       setSups(merged);
       onSaveSuppliers(merged);
     } catch (e) {
-      setAiError("KI-Suche fehlgeschlagen: " + e.message);
+      setAiError("AI search failed: " + e.message);
     }
     setAiLoading(false);
   };
@@ -1959,11 +2304,11 @@ function PartDetailModal({ part, suppliers, shops, onClose, onSaveSuppliers }) {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>🏪 Bezugsquellen ({sups.length})</div>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>🏪 Sources ({sups.length})</div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => setAddSupForm({ shopName: "", sku: "", searchUrl: "", price: "", currency: "EUR", notes: "" })}>+ Manuell</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setAddSupForm({ shopName: "", sku: "", searchUrl: "", price: "", currency: "EUR", notes: "" })}>+ Manual</button>
             <button className="btn btn-ai btn-sm" onClick={handleAiSearch} disabled={aiLoading}>
-              {aiLoading ? <><span className="spinner" /> Suche…</> : "🤖 KI-Suche"}
+              {aiLoading ? <><span className="spinner" /> Searching…</> : "🤖 AI Search"}
             </button>
           </div>
         </div>
@@ -1972,7 +2317,7 @@ function PartDetailModal({ part, suppliers, shops, onClose, onSaveSuppliers }) {
 
         {sups.length === 0 && !addSupForm && (
           <div style={{ textAlign: "center", padding: "20px", color: "var(--text3)", fontSize: 13 }}>
-            Noch keine Bezugsquellen. Klicke auf <strong>KI-Suche</strong> um automatisch Shops zu finden.
+            No sources yet. Click <strong>AI Search</strong> to find shops automatically.
           </div>
         )}
 
@@ -1982,7 +2327,7 @@ function PartDetailModal({ part, suppliers, shops, onClose, onSaveSuppliers }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>{s.shopName}</span>
-                {s.aiGenerated && <span style={{ fontSize: 10, background: "rgba(88,166,255,0.15)", color: "var(--blue)", padding: "1px 6px", borderRadius: 4 }}>KI</span>}
+                {s.aiGenerated && <span style={{ fontSize: 10, background: "rgba(88,166,255,0.15)", color: "var(--blue)", padding: "1px 6px", borderRadius: 4 }}>AI</span>}
                 {s.sku && <span className="mono" style={{ color: "var(--text2)", fontSize: 11 }}>#{s.sku}</span>}
                 {s.price && <span className="price-tag">{s.price.toFixed(2)} {s.currency}</span>}
               </div>
@@ -2002,7 +2347,7 @@ function PartDetailModal({ part, suppliers, shops, onClose, onSaveSuppliers }) {
         )}
 
         <div className="modal-actions">
-          <button className="btn btn-primary" onClick={onClose}>Schließen</button>
+          <button className="btn btn-primary" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
@@ -2013,7 +2358,7 @@ function AddSupplierForm({ form, shops, onChange, onSave, onCancel }) {
   const set = (k, v) => onChange(f => ({ ...f, [k]: v }));
   return (
     <div style={{ background: "var(--bg3)", border: "1px solid var(--border2)", borderRadius: 8, padding: 14, marginBottom: 10 }}>
-      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>+ Bezugsquelle hinzufügen</div>
+      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>+ Add source</div>
       <div className="form-grid">
         <div className="form-row">
           <label>Shop</label>
@@ -2021,34 +2366,34 @@ function AddSupplierForm({ form, shops, onChange, onSave, onCancel }) {
             const sh = shops.find(s => s.id === e.target.value);
             onChange(f => ({ ...f, shopId: e.target.value, shopName: sh?.name || f.shopName }));
           }}>
-            <option value="">Eigener Shop</option>
+            <option value="">Custom shop</option>
             {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
         <div className="form-row">
-          <label>Shop-Name</label>
-          <input value={form.shopName} onChange={e => set("shopName", e.target.value)} placeholder="z.B. Reichelt" />
+          <label>Shop name</label>
+          <input value={form.shopName} onChange={e => set("shopName", e.target.value)} placeholder="e.g. Reichelt" />
         </div>
         <div className="form-row">
-          <label>Bestell-Nr / SKU</label>
-          <input value={form.sku} onChange={e => set("sku", e.target.value)} className="mono" placeholder="z.B. ATM328P-PU" />
+          <label>Order no. / SKU</label>
+          <input value={form.sku} onChange={e => set("sku", e.target.value)} className="mono" placeholder="e.g. ATM328P-PU" />
         </div>
         <div className="form-row">
-          <label>Preis (€)</label>
+          <label>Price (€)</label>
           <input type="number" step="0.01" value={form.price} onChange={e => set("price", parseFloat(e.target.value) || "")} placeholder="2.50" />
         </div>
       </div>
       <div className="form-row">
-        <label>Link zur Seite</label>
+        <label>Link to page</label>
         <input value={form.searchUrl} onChange={e => set("searchUrl", e.target.value)} placeholder="https://…" />
       </div>
       <div className="form-row">
-        <label>Notizen</label>
-        <input value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Verfügbarkeit, Lieferzeit, …" />
+        <label>Notes</label>
+        <input value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Availability, lead time, …" />
       </div>
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <button className="btn btn-secondary btn-sm" onClick={onCancel}>Abbrechen</button>
-        <button className="btn btn-primary btn-sm" onClick={() => onSave(form)}>Speichern</button>
+        <button className="btn btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
+        <button className="btn btn-primary btn-sm" onClick={() => onSave(form)}>Save</button>
       </div>
     </div>
   );
@@ -2082,18 +2427,7 @@ Antworte NUR mit JSON:
   "warning": "Optionale Warnung z.B. bei AliExpress-IC-Risiko, sonst null"
 }`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: apiHeaders(getApiKey()),
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 300,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  if (!res.ok) throw new Error("API Fehler");
-  const data = await res.json();
-  const text = data.content?.map(c => c.text || "").join("") || "{}";
+  const text = await callAI([{ role: "user", content: prompt }], 300);
   return JSON.parse(text.replace(/```json|```/g, "").trim());
 }
 
@@ -2140,19 +2474,19 @@ function SupplierDropdown({ item, part, suppliers, onSelect }) {
             minWidth: 0,
           }}
         >
-          <option value="">— Shop wählen —</option>
+          <option value="">— Select shop —</option>
           {suppliers.map(s => (
             <option key={s.id} value={s.id}>
               {s.shopName}{s.price ? ` · ${s.price.toFixed(2)}€` : ""}
             </option>
           ))}
-          {suppliers.length === 0 && <option disabled>Keine Lieferanten hinterlegt</option>}
+          {suppliers.length === 0 && <option disabled>No suppliers added</option>}
         </select>
 
         {/* AI suggest button */}
         {suppliers.length > 1 && (
           <button
-            title="KI-Empfehlung"
+            title="AI recommendation"
             onClick={handleSuggest}
             disabled={suggesting}
             style={{ background: "rgba(88,166,255,0.1)", border: "1px solid rgba(88,166,255,0.25)", borderRadius: 5, padding: "4px 7px", cursor: "pointer", color: "var(--blue)", fontSize: 13, lineHeight: 1, flexShrink: 0 }}
@@ -2163,7 +2497,7 @@ function SupplierDropdown({ item, part, suppliers, onSelect }) {
 
         {/* No suppliers → suggest adding */}
         {suppliers.length === 0 && (
-          <span style={{ fontSize: 11, color: "var(--text3)", whiteSpace: "nowrap" }}>Erst Lieferant hinzufügen</span>
+          <span style={{ fontSize: 11, color: "var(--text3)", whiteSpace: "nowrap" }}>Add a supplier first</span>
         )}
       </div>
 
@@ -2182,8 +2516,15 @@ function SupplierDropdown({ item, part, suppliers, onSelect }) {
 }
 
 // ── BOM Tab ───────────────────────────────────────────────────────────────────
-function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers }) {
+function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers, initialProjectId = null }) {
   const [activeProject, setActiveProject] = useState(null);
+
+  useEffect(() => {
+    if (initialProjectId) {
+      const p = projects.find(p => p.id === initialProjectId);
+      if (p) setActiveProject(p);
+    }
+  }, [initialProjectId]);
   const [showNewProj, setShowNewProj] = useState(false);
   const [newProjName, setNewProjName] = useState("");
   const [showAddPart, setShowAddPart] = useState(false);
@@ -2200,7 +2541,7 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers })
   };
 
   const deleteProject = (id) => {
-    if (!confirm("Projekt und alle BOM-Einträge löschen?")) return;
+    if (!confirm("Delete project and all BOM entries?")) return;
     saveProjects(projects.filter(p => p.id !== id));
     saveBom(bomItems.filter(b => b.projectId !== id));
     if (activeProject?.id === id) setActiveProject(null);
@@ -2227,7 +2568,7 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers })
 
   const exportCSV = () => {
     if (!activeProject) return;
-    const rows = [["Qty", "Referenz", "Name", "MPN", "Hersteller", "Gehäuse", "Notizen", "Lieferant 1", "SKU 1", "Preis 1"]];
+    const rows = [["Qty", "Reference", "Name", "MPN", "Manufacturer", "Package", "Notes", "Supplier 1", "SKU 1", "Price 1"]];
     projectBom.forEach(item => {
       const part = parts.find(p => p.id === item.partId) || {};
       const sups = suppliers.filter(s => s.partId === item.partId);
@@ -2252,31 +2593,31 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers })
   return (
     <div>
       <div className="section-header">
-        <div className="section-title">📋 Stücklisten-Manager</div>
+        <div className="section-title">📋 BOM Manager</div>
       </div>
 
       <div className="two-col">
         {/* Projekte */}
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text2)" }}>PROJEKTE</div>
-            <button className="btn btn-primary btn-sm" onClick={() => setShowNewProj(true)}>+ Neu</button>
+            <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text2)" }}>PROJECTS</div>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowNewProj(true)}>+ New</button>
           </div>
 
           {showNewProj && (
             <div style={{ background: "var(--bg3)", border: "1px solid var(--border2)", borderRadius: 8, padding: 12, marginBottom: 10 }}>
-              <input className="search-input" style={{ width: "100%", marginBottom: 8 }} placeholder="Projektname…" value={newProjName} onChange={e => setNewProjName(e.target.value)} onKeyDown={e => e.key === "Enter" && createProject()} autoFocus />
+              <input className="search-input" style={{ width: "100%", marginBottom: 8 }} placeholder="Project name…" value={newProjName} onChange={e => setNewProjName(e.target.value)} onKeyDown={e => e.key === "Enter" && createProject()} autoFocus />
               <div style={{ display: "flex", gap: 8 }}>
                 <button className="btn btn-secondary btn-sm" onClick={() => setShowNewProj(false)}>✕</button>
-                <button className="btn btn-primary btn-sm" onClick={createProject}>Erstellen</button>
+                <button className="btn btn-primary btn-sm" onClick={createProject}>Create</button>
               </div>
             </div>
           )}
 
           {projects.length === 0 && !showNewProj && (
             <div className="empty-state" style={{ padding: 24 }}>
-              <h3>Kein Projekt</h3>
-              <p>Erstelle dein erstes Projekt.</p>
+              <h3>No project</h3>
+              <p>Create your first project.</p>
             </div>
           )}
 
@@ -2287,7 +2628,7 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers })
                 <div className="pc-icon">⚙️</div>
                 <div className="pc-info">
                   <div className="pc-name">{p.name}</div>
-                  <div className="pc-meta">{count} Position{count !== 1 ? "en" : ""} · {new Date(p.created).toLocaleDateString("de-DE")}</div>
+                  <div className="pc-meta">{count} item{count !== 1 ? "s" : ""} · {new Date(p.created).toLocaleDateString()}</div>
                 </div>
                 <button className="btn btn-danger" onClick={e => { e.stopPropagation(); deleteProject(p.id); }}>🗑</button>
               </div>
@@ -2300,8 +2641,8 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers })
           {!activeProject ? (
             <div className="select-proj-hint">
               <span style={{ fontSize: 32 }}>📋</span>
-              <h3>Projekt wählen</h3>
-              <p>Wähle links ein Projekt oder erstelle ein neues.</p>
+              <h3>Select project</h3>
+              <p>Select a project on the left or create a new one.</p>
             </div>
           ) : (
             <>
@@ -2310,15 +2651,15 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers })
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {totalCost > 0 && <span className="price-tag" style={{ fontSize: 13 }}>∑ ~{totalCost.toFixed(2)} €</span>}
                   <button className="export-btn" onClick={exportCSV}>⬇ CSV</button>
-                  <button className="export-btn" style={{ color: "var(--orange)", borderColor: "rgba(210,153,34,0.3)" }} onClick={() => setShowCart(true)}>🛒 Warenkorb</button>
-                  <button className="btn btn-primary btn-sm" onClick={() => setShowAddPart(true)}>+ Bauteil</button>
+                  <button className="export-btn" style={{ color: "var(--orange)", borderColor: "rgba(210,153,34,0.3)" }} onClick={() => setShowCart(true)}>🛒 Cart</button>
+                  <button className="btn btn-primary btn-sm" onClick={() => setShowAddPart(true)}>+ Part</button>
                 </div>
               </div>
 
               {projectBom.length === 0 ? (
                 <div className="empty-state">
-                  <h3>Leere Stückliste</h3>
-                  <p>Klicke auf „+ Bauteil" um Positionen hinzuzufügen.</p>
+                  <h3>Empty BOM</h3>
+                  <p>Click \"+ Part\" to add items.</p>
                 </div>
               ) : (
                 <div className="table-wrap">
@@ -2326,11 +2667,11 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers })
                     <thead>
                       <tr>
                         <th>Qty</th>
-                        <th>Bauteil</th>
+                        <th>Part</th>
                         <th>MPN</th>
-                        <th>Referenz</th>
-                        <th style={{ minWidth: 190 }}>Bevorzugter Shop</th>
-                        <th>Preis</th>
+                        <th>Reference</th>
+                        <th style={{ minWidth: 190 }}>Preferred shop</th>
+                        <th>Price</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -2344,7 +2685,7 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers })
                           <tr key={item.id}>
                             <td><span className="bom-qty">{item.quantity}×</span></td>
                             <td>
-                              <div style={{ fontWeight: 500 }}>{part?.name || <span style={{ color: "var(--red)" }}>Gelöscht</span>}</div>
+                              <div style={{ fontWeight: 500 }}>{part?.name || <span style={{ color: "var(--red)" }}>Deleted</span>}</div>
                               {part?.footprint && <div className="mono" style={{ color: "var(--text3)", fontSize: 11 }}>{part.footprint}</div>}
                             </td>
                             <td><span className="mono">{part?.mpn || "—"}</span></td>
@@ -2405,7 +2746,7 @@ const SHOP_CART_CONFIGS = {
       return base + params;
     },
     exportCsv: null,
-    notes: "Öffnet Reichelt-Warenkorb mit allen Artikeln direkt.",
+    notes: "Opens Reichelt cart with all items directly.",
   },
   conrad: {
     name: "Conrad",
@@ -2415,7 +2756,7 @@ const SHOP_CART_CONFIGS = {
     buildUrl: (items) =>
       items.map(it => `https://www.conrad.de/search.html?search=${encodeURIComponent(it.sku || it.name)}`),
     exportCsv: null,
-    notes: "Öffnet Suchergebnisse für jeden Artikel einzeln.",
+    notes: "Opens search results for each item individually.",
   },
   mouser: {
     name: "Mouser",
@@ -2430,7 +2771,7 @@ const SHOP_CART_CONFIGS = {
     },
     exportFileName: "mouser_bom.csv",
     uploadUrl: "https://www.mouser.de/Bom/",
-    notes: "CSV exportieren → bei Mouser unter 'BOM Tool' hochladen.",
+    notes: "Export CSV → upload at Mouser under 'BOM Tool'.",
   },
   digikey: {
     name: "DigiKey",
@@ -2445,7 +2786,7 @@ const SHOP_CART_CONFIGS = {
     },
     exportFileName: "digikey_bom.csv",
     uploadUrl: "https://www.digikey.de/de/mylists/list",
-    notes: "CSV exportieren → bei DigiKey unter 'My Lists → Create from BOM' hochladen.",
+    notes: "Export CSV → upload at DigiKey under 'My Lists → Create from BOM'.",
   },
   lcsc: {
     name: "LCSC",
@@ -2460,7 +2801,7 @@ const SHOP_CART_CONFIGS = {
     },
     exportFileName: "lcsc_bom.csv",
     uploadUrl: "https://www.lcsc.com/bom",
-    notes: "CSV exportieren → bei LCSC unter 'BOM Order' hochladen.",
+    notes: "Export CSV → upload at LCSC under 'BOM Order'.",
   },
   berrybase: {
     name: "BerryBase",
@@ -2469,7 +2810,7 @@ const SHOP_CART_CONFIGS = {
     cartType: "url_single",
     buildUrl: (items) =>
       items.map(it => `https://www.berrybase.de/search?sSearch=${encodeURIComponent(it.sku || it.name)}`),
-    notes: "Öffnet Suchergebnisse für jeden Artikel.",
+    notes: "Opens search results for each item.",
   },
   aliexpress: {
     name: "AliExpress",
@@ -2478,7 +2819,7 @@ const SHOP_CART_CONFIGS = {
     cartType: "url_single",
     buildUrl: (items) =>
       items.map(it => it.productUrl || `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(it.name)}`),
-    notes: "Öffnet Produktseiten/Suche. Manuell in den Warenkorb legen.",
+    notes: "Opens product pages/search. Add to cart manually.",
   },
 };
 
@@ -2547,10 +2888,10 @@ function CartModal({ project, bomItems, parts, suppliers, onClose }) {
       const items = shop.items.filter(it => it.sku);
       const noSku = shop.items.filter(it => !it.sku);
       if (items.length > 0) window.open(cfg.buildUrl(items), "_blank");
-      if (noSku.length > 0) setPopupWarning(`${noSku.length} Artikel ohne SKU übersprungen: ${noSku.map(i => i.name).join(", ")}`);
+      if (noSku.length > 0) setPopupWarning(`${noSku.length} items without SKU skipped: ${noSku.map(i => i.name).join(", ")}`);
     } else if (cfg.cartType === "url_single") {
       const urls = cfg.buildUrl(shop.items);
-      setPopupWarning(`${urls.length} Tabs werden geöffnet — Popup-Blocker deaktivieren falls nötig.`);
+      setPopupWarning(`${urls.length} tabs will be opened — disable popup blocker if needed.`);
       urls.forEach((url, i) => setTimeout(() => window.open(url, "_blank"), i * 400));
     } else if (cfg.cartType === "bom_csv") {
       const csv = cfg.exportCsv(shop.items);
@@ -2564,22 +2905,22 @@ function CartModal({ project, bomItems, parts, suppliers, onClose }) {
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ width: 700, maxHeight: "88vh" }}>
-        <div className="modal-title">🛒 Warenkorb befüllen — {project.name}</div>
+        <div className="modal-title">🛒 Build cart — {project.name}</div>
 
         {/* Coverage summary */}
         <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
           <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 16px", flex: 1, minWidth: 120 }}>
             <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "IBM Plex Mono", color: "var(--green)" }}>{coveredItems}</div>
-            <div style={{ fontSize: 11, color: "var(--text2)" }}>von {totalItems} mit Lieferant</div>
+            <div style={{ fontSize: 11, color: "var(--text2)" }}>of {totalItems} with supplier</div>
           </div>
           <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 16px", flex: 1, minWidth: 120 }}>
             <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "IBM Plex Mono", color: "var(--blue)" }}>{shops.length}</div>
-            <div style={{ fontSize: 11, color: "var(--text2)" }}>Shops mit Artikeln</div>
+            <div style={{ fontSize: 11, color: "var(--text2)" }}>shops with items</div>
           </div>
           {unassigned.length > 0 && (
             <div style={{ background: "rgba(248,81,73,0.08)", border: "1px solid rgba(248,81,73,0.2)", borderRadius: 8, padding: "10px 16px", flex: 1, minWidth: 120 }}>
               <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "IBM Plex Mono", color: "var(--red)" }}>{unassigned.length}</div>
-              <div style={{ fontSize: 11, color: "var(--text2)" }}>ohne Lieferant</div>
+              <div style={{ fontSize: 11, color: "var(--text2)" }}>without supplier</div>
             </div>
           )}
         </div>
@@ -2594,14 +2935,14 @@ function CartModal({ project, bomItems, parts, suppliers, onClose }) {
         {shops.length === 0 ? (
           <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text3)" }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>🏪</div>
-            <div style={{ fontSize: 14, color: "var(--text2)", marginBottom: 6 }}>Noch keine Lieferanten eingetragen</div>
-            <div style={{ fontSize: 12 }}>Gehe zu „Bauteile" → Detail → KI-Suche oder manuell Shops hinzufügen.</div>
+            <div style={{ fontSize: 14, color: "var(--text2)", marginBottom: 6 }}>No suppliers added yet</div>
+            <div style={{ fontSize: 12 }}>Go to "Parts" → Detail → AI Search or add shops manually.</div>
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 16, minHeight: 300 }}>
             {/* Shop list */}
             <div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", letterSpacing: "0.06em", marginBottom: 8 }}>SHOPS</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", letterSpacing: "0.06em", marginBottom: 8 }}>STORES</div>
               {shops.map(shop => {
                 const cfg = SHOP_CART_CONFIGS[shop.shopId] || Object.values(SHOP_CART_CONFIGS).find(c => c.name?.toLowerCase() === shop.shopName?.toLowerCase());
                 const withSku = shop.items.filter(i => i.sku).length;
@@ -2616,17 +2957,17 @@ function CartModal({ project, bomItems, parts, suppliers, onClose }) {
                       </div>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: 13 }}>{shop.shopName}</div>
-                        <div style={{ fontSize: 11, color: "var(--text2)" }}>{shop.items.length} Artikel</div>
+                        <div style={{ fontSize: 11, color: "var(--text2)" }}>{shop.items.length} items</div>
                       </div>
                     </div>
                     {/* Cart type badge */}
                     {cfg && (
                       <div style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, display: "inline-block", background: cfg.cartType === "url_multi" ? "rgba(57,211,83,0.15)" : cfg.cartType === "bom_csv" ? "rgba(88,166,255,0.15)" : "rgba(210,153,34,0.15)", color: cfg.cartType === "url_multi" ? "var(--green)" : cfg.cartType === "bom_csv" ? "var(--blue)" : "var(--orange)" }}>
-                        {cfg.cartType === "url_multi" ? "🛒 Direkt" : cfg.cartType === "bom_csv" ? "📄 CSV-Upload" : "🔗 Einzellinks"}
+                        {cfg.cartType === "url_multi" ? "🛒 Direct" : cfg.cartType === "bom_csv" ? "📄 CSV Upload" : "🔗 Individual links"}
                       </div>
                     )}
                     {withSku > 0 && withSku < shop.items.length && (
-                      <div style={{ fontSize: 10, color: "var(--orange)", marginTop: 2 }}>{shop.items.length - withSku} ohne SKU</div>
+                      <div style={{ fontSize: 10, color: "var(--orange)", marginTop: 2 }}>{shop.items.length - withSku} without SKU</div>
                     )}
                   </div>
                 );
@@ -2637,7 +2978,7 @@ function CartModal({ project, bomItems, parts, suppliers, onClose }) {
             <div>
               {!activeShop ? (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text3)", fontSize: 13, flexDirection: "column", gap: 6 }}>
-                  <span style={{ fontSize: 24 }}>←</span>Shop auswählen
+                  <span style={{ fontSize: 24 }}>←</span>Select a shop
                 </div>
               ) : (() => {
                 const cfg = SHOP_CART_CONFIGS[activeShop.shopId] || Object.values(SHOP_CART_CONFIGS).find(c => c.name?.toLowerCase() === activeShop.shopName?.toLowerCase());
@@ -2656,14 +2997,14 @@ function CartModal({ project, bomItems, parts, suppliers, onClose }) {
                           style={{ marginTop: 6 }}
                           onClick={() => handleCartAction(activeShop)}
                         >
-                          {cfg?.cartType === "bom_csv" ? "📄 CSV exportieren" :
-                           cfg?.cartType === "url_multi" ? "🛒 Warenkorb öffnen" :
-                           "🔗 Artikel öffnen"}
+                          {cfg?.cartType === "bom_csv" ? "📄 Export CSV" :
+                           cfg?.cartType === "url_multi" ? "🛒 Open cart" :
+                           "🔗 Open items"}
                         </button>
                         {cfg?.cartType === "bom_csv" && cfg?.uploadUrl && (
                           <div style={{ marginTop: 6 }}>
                             <a href={cfg.uploadUrl} target="_blank" rel="noopener" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>
-                              → {cfg.name} BOM-Tool öffnen ↗
+                              → Open {cfg.name} BOM tool ↗
                             </a>
                           </div>
                         )}
@@ -2673,7 +3014,7 @@ function CartModal({ project, bomItems, parts, suppliers, onClose }) {
                     {/* Item list */}
                     <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
                       <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 70px 80px", padding: "6px 10px", background: "var(--bg3)", fontSize: 11, fontWeight: 600, color: "var(--text2)", letterSpacing: "0.04em" }}>
-                        <div>Qty</div><div>Bauteil</div><div>SKU</div><div>Preis</div>
+                        <div>Qty</div><div>Part</div><div>SKU</div><div>Price</div>
                       </div>
                       {activeShop.items.map((it, i) => (
                         <div key={i} style={{ display: "grid", gridTemplateColumns: "40px 1fr 70px 80px", padding: "7px 10px", borderTop: "1px solid var(--border)", fontSize: 12, alignItems: "center" }}>
@@ -2683,7 +3024,7 @@ function CartModal({ project, bomItems, parts, suppliers, onClose }) {
                             {it.mpn && <div style={{ fontSize: 10, color: "var(--text3)", fontFamily: "IBM Plex Mono" }}>{it.mpn}</div>}
                           </div>
                           <div style={{ fontFamily: "IBM Plex Mono", fontSize: 11, color: it.sku ? "var(--text)" : "var(--red)" }}>
-                            {it.sku || "fehlt"}
+                            {it.sku || "missing"}
                           </div>
                           <div className="price-tag" style={{ fontSize: 11 }}>
                             {it.price ? `${(it.price * it.qty).toFixed(2)} €` : "—"}
@@ -2701,7 +3042,7 @@ function CartModal({ project, bomItems, parts, suppliers, onClose }) {
         {/* Unassigned */}
         {unassigned.length > 0 && (
           <div style={{ marginTop: 16, background: "rgba(248,81,73,0.06)", border: "1px solid rgba(248,81,73,0.15)", borderRadius: 8, padding: "10px 14px" }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--red)", marginBottom: 6 }}>Ohne Lieferant — noch nicht bestellbar:</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--red)", marginBottom: 6 }}>Without supplier — not yet orderable:</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {unassigned.map((u, i) => (
                 <span key={i} style={{ fontSize: 12, background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 8px", color: "var(--text2)" }}>
@@ -2713,7 +3054,7 @@ function CartModal({ project, bomItems, parts, suppliers, onClose }) {
         )}
 
         <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={onClose}>Schließen</button>
+          <button className="btn btn-secondary" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
@@ -2735,13 +3076,13 @@ function AddBomItemModal({ parts, onAdd, onClose, existingIds }) {
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
-        <div className="modal-title">➕ Bauteil zur Stückliste hinzufügen</div>
+        <div className="modal-title">➕ Add Part to BOM</div>
         <div className="form-row">
-          <label>Bauteil suchen</label>
-          <input value={query} onChange={e => { setQuery(e.target.value); setSelected(null); }} placeholder="Name oder MPN…" autoFocus />
+          <label>Search part</label>
+          <input value={query} onChange={e => { setQuery(e.target.value); setSelected(null); }} placeholder="Name or MPN…" autoFocus />
         </div>
         <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: 14, border: "1px solid var(--border)", borderRadius: 6 }}>
-          {filtered.length === 0 && <div style={{ padding: "12px 14px", color: "var(--text3)", fontSize: 13 }}>Keine Treffer</div>}
+          {filtered.length === 0 && <div style={{ padding: "12px 14px", color: "var(--text3)", fontSize: 13 }}>No results</div>}
           {filtered.map(p => (
             <div key={p.id} onClick={() => setSelected(p)}
               style={{
@@ -2749,7 +3090,7 @@ function AddBomItemModal({ parts, onAdd, onClose, existingIds }) {
                 background: selected?.id === p.id ? "rgba(57,211,83,0.08)" : "transparent",
                 borderLeft: selected?.id === p.id ? "2px solid var(--green)" : "2px solid transparent"
               }}>
-              <div style={{ fontWeight: 500, fontSize: 13 }}>{p.name} {existingIds.includes(p.id) && <span style={{ fontSize: 11, color: "var(--orange)" }}>(bereits in BOM)</span>}</div>
+              <div style={{ fontWeight: 500, fontSize: 13 }}>{p.name} {existingIds.includes(p.id) && <span style={{ fontSize: 11, color: "var(--orange)" }}>(already in BOM)</span>}</div>
               <div style={{ fontSize: 11, color: "var(--text2)" }}>{p.mpn} · {p.category} · {p.footprint}</div>
             </div>
           ))}
@@ -2757,19 +3098,19 @@ function AddBomItemModal({ parts, onAdd, onClose, existingIds }) {
         {selected && (
           <div className="form-grid">
             <div className="form-row">
-              <label>Anzahl *</label>
+              <label>Quantity *</label>
               <input type="number" min="1" value={qty} onChange={e => setQty(parseInt(e.target.value) || 1)} />
             </div>
             <div className="form-row">
-              <label>Referenz (z.B. R1, C3)</label>
-              <input value={ref} onChange={e => setRef(e.target.value)} className="mono" placeholder="z.B. U1, C12" />
+              <label>Reference (e.g. R1, C3)</label>
+              <input value={ref} onChange={e => setRef(e.target.value)} className="mono" placeholder="e.g. U1, C12" />
             </div>
           </div>
         )}
         <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" disabled={!selected} onClick={() => onAdd({ partId: selected.id, quantity: qty, reference: ref, notes })}>
-            Hinzufügen
+            Add
           </button>
         </div>
       </div>
@@ -2784,24 +3125,24 @@ function EditBomItemModal({ item, part, onSave, onClose }) {
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ width: 420 }}>
-        <div className="modal-title">✏️ {part?.name || "Bauteil"} bearbeiten</div>
+        <div className="modal-title">✏️ Edit {part?.name || "part"}</div>
         <div className="form-grid">
           <div className="form-row">
-            <label>Anzahl</label>
+            <label>Quantity</label>
             <input type="number" min="1" value={qty} onChange={e => setQty(parseInt(e.target.value) || 1)} />
           </div>
           <div className="form-row">
-            <label>Referenz</label>
+            <label>Reference</label>
             <input value={ref} onChange={e => setRef(e.target.value)} className="mono" />
           </div>
         </div>
         <div className="form-row">
-          <label>Notizen</label>
+          <label>Notes</label>
           <input value={notes} onChange={e => setNotes(e.target.value)} />
         </div>
         <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
-          <button className="btn btn-primary" onClick={() => onSave({ ...item, quantity: qty, reference: ref, notes })}>Speichern</button>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={() => onSave({ ...item, quantity: qty, reference: ref, notes })}>Save</button>
         </div>
       </div>
     </div>
@@ -2810,16 +3151,16 @@ function EditBomItemModal({ item, part, onSave, onClose }) {
 
 // ── CSV/Excel Structured Importer ─────────────────────────────────────────────
 const BOM_FIELDS = [
-  { id: "name",         label: "Name / Bezeichnung", required: true },
-  { id: "quantity",     label: "Menge",               required: true },
-  { id: "reference",    label: "Referenz (R1, C3…)",  required: false },
-  { id: "mpn",          label: "MPN / Bestell-Nr.",    required: false },
-  { id: "manufacturer", label: "Hersteller",           required: false },
-  { id: "footprint",    label: "Gehäuse / Footprint",  required: false },
-  { id: "value",        label: "Wert (10k, 100nF…)",  required: false },
-  { id: "description",  label: "Beschreibung",         required: false },
-  { id: "category",     label: "Kategorie",            required: false },
-  { id: "_ignore",      label: "— Ignorieren —",       required: false },
+  { id: "name",         label: "Name / Designation", required: true },
+  { id: "quantity",     label: "Quantity",            required: true },
+  { id: "reference",    label: "Reference (R1, C3…)", required: false },
+  { id: "mpn",          label: "MPN / Order no.",     required: false },
+  { id: "manufacturer", label: "Manufacturer",        required: false },
+  { id: "footprint",    label: "Footprint",           required: false },
+  { id: "value",        label: "Value (10k, 100nF…)", required: false },
+  { id: "description",  label: "Description",         required: false },
+  { id: "category",     label: "Category",            required: false },
+  { id: "_ignore",      label: "— Ignore —",          required: false },
 ];
 
 // Auto-detect column → BOM field mapping
@@ -2955,7 +3296,7 @@ function CsvExcelImporter({ parts, saveParts, projects, saveProjects, bomItems, 
   };
 
   const applyMapping = () => {
-    const CATS = ["Widerstand","Kondensator","Induktivität","IC","Transistor","Diode","LED","Relais","Stecker","Schalter","Sensor","MCU","MOSFET","Modul","Mechanik","Kabel","Sonstiges"];
+    const CATS = ["Resistor","Capacitor","Inductor","IC","Transistor","Diode","LED","Relay","Connector","Switch","Sensor","MCU","MOSFET","Module","Mechanical","Cable","Other"];
     const items = rawRows.map((row, i) => {
       const get = (field) => {
         const col = Object.keys(mapping).find(h => mapping[h] === field);
@@ -3006,25 +3347,25 @@ function CsvExcelImporter({ parts, saveParts, projects, saveProjects, bomItems, 
           name: item.name, mpn: item.mpn || "", manufacturer: item.manufacturer || "",
           category: item.category || "", footprint: item.footprint || "",
           description: [item.description, item.value].filter(Boolean).join(" – ") || "",
-          notes: `Importiert aus: ${fileName}`,
+          notes: `Imported from: ${fileName}`,
         };
         newParts.push(part); addedParts++;
       }
       const exists = newBom.find(b => b.projectId === project.id && b.partId === part.id);
       if (exists) { exists.quantity += item.quantity; }
       else {
-        newBom.push({ id: Date.now().toString() + Math.random().toString(36).slice(2), projectId: project.id, partId: part.id, quantity: item.quantity, reference: item.reference || "", notes: item.value ? `Wert: ${item.value}` : "" });
+        newBom.push({ id: Date.now().toString() + Math.random().toString(36).slice(2), projectId: project.id, partId: part.id, quantity: item.quantity, reference: item.reference || "", notes: item.value ? `Value: ${item.value}` : "" });
         addedItems++;
       }
     }
     saveParts(newParts); saveBom(newBom);
-    setImportDone({ project: project.name, addedParts, addedItems, total: enabled.length });
+    setImportDone({ project: project.name, projectId: project.id, addedParts, addedItems, total: enabled.length });
     setCsvStep(4); setImporting(false);
   };
 
   const reset = () => { setCsvStep(1); setHeaders([]); setRawRows([]); setMapping({}); setFileName(""); setEditableItems([]); setImportDone(null); setTargetProject("new"); setNewProjectName(""); };
 
-  const CATS = ["Widerstand","Kondensator","Induktivität","IC","Transistor","Diode","LED","Relais","Stecker","Schalter","Sensor","MCU","MOSFET","Modul","Mechanik","Kabel","Sonstiges"];
+  const CATS = ["Resistor","Capacitor","Inductor","IC","Transistor","Diode","LED","Relay","Connector","Switch","Sensor","MCU","MOSFET","Module","Mechanical","Cable","Other"];
   const fieldsMapped = Object.values(mapping).filter(v => v !== "_ignore");
   const hasName = fieldsMapped.includes("name");
   const hasQty = fieldsMapped.includes("quantity");
@@ -3033,7 +3374,7 @@ function CsvExcelImporter({ parts, saveParts, projects, saveProjects, bomItems, 
     <div>
       {/* Steps */}
       <div className="import-steps" style={{ marginBottom: 24 }}>
-        {[{n:1,label:"Datei"},{n:2,label:"Spalten zuordnen"},{n:3,label:"Prüfen"},{n:4,label:"Fertig"}].map(s => (
+        {[{n:1,label:"File"},{n:2,label:"Map columns"},{n:3,label:"Review"},{n:4,label:"Done"}].map(s => (
           <div key={s.n} className="import-step">
             <div className={`step-circle ${csvStep > s.n ? "done" : csvStep === s.n ? "active" : ""}`}>{csvStep > s.n ? "✓" : s.n}</div>
             <div className={`step-label ${csvStep > s.n ? "done" : csvStep === s.n ? "active" : ""}`}>{s.label}</div>
@@ -3050,17 +3391,17 @@ function CsvExcelImporter({ parts, saveParts, projects, saveProjects, bomItems, 
             onDrop={handleDrop}>
             <input type="file" accept=".csv,.xlsx,.xls,.ods,.tsv,.txt" onChange={e => e.target.files[0] && processFile(e.target.files[0])} />
             <div className="drop-zone-icon">{loadingXlsx ? "⏳" : "📊"}</div>
-            <div className="drop-zone-text">{loadingXlsx ? "Lade Excel-Parser…" : "CSV oder Excel-Datei hochladen"}</div>
-            <div className="drop-zone-sub">.csv · .xlsx · .xls · .ods · .tsv — Trennzeichen wird automatisch erkannt</div>
+            <div className="drop-zone-text">{loadingXlsx ? "Loading Excel parser…" : "Upload CSV or Excel file"}</div>
+            <div className="drop-zone-sub">.csv · .xlsx · .xls · .ods · .tsv — delimiter auto-detected</div>
           </div>
           <div style={{ marginTop: 20, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, padding: 14 }}>
-            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: "var(--text2)" }}>Kompatibel mit jedem CAD- und PCB-Tool</div>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: "var(--text2)" }}>Compatible with any CAD or PCB tool</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
-              {["SolidWorks","Fusion 360","CATIA","Inventor","FreeCAD","Onshape","KiCad","Altium","Eagle","EasyEDA","OrCAD","Zuken","Excel / Google Sheets","Eigenes Format"].map(h =>
+              {["SolidWorks","Fusion 360","CATIA","Inventor","FreeCAD","Onshape","KiCad","Altium","Eagle","EasyEDA","OrCAD","Zuken","Excel / Google Sheets","Custom format"].map(h =>
                 <span key={h} className="field-chip">{h}</span>)}
             </div>
             <div style={{ fontSize: 12, color: "var(--text3)" }}>
-              Spaltenbezeichnungen in jeder Sprache — Deutsch, Englisch, Französisch, Japanisch, Chinesisch usw. werden automatisch erkannt.
+              Column headers in any language — German, English, French, Japanese, Chinese etc. are auto-detected.
             </div>
           </div>
         </div>
@@ -3072,15 +3413,15 @@ function CsvExcelImporter({ parts, saveParts, projects, saveProjects, bomItems, 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <div>
               <div style={{ fontWeight: 600, fontSize: 15 }}>{fileName}</div>
-              <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 2 }}>{rawRows.length} Zeilen · {headers.length} Spalten erkannt</div>
+              <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 2 }}>{rawRows.length} rows · {headers.length} columns detected</div>
             </div>
-            <button className="btn btn-secondary btn-sm" onClick={reset}>← Zurück</button>
+            <button className="btn btn-secondary btn-sm" onClick={reset}>← Back</button>
           </div>
 
           <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", marginBottom: 16 }}>
             {/* Header row */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 16px 1fr", gap: 0, padding: "8px 14px", background: "var(--bg3)", borderBottom: "1px solid var(--border)", fontSize: 11, fontWeight: 600, color: "var(--text2)", letterSpacing: "0.05em" }}>
-              <div>SPALTE IN DATEI</div><div></div><div>FELD IN BOM</div>
+              <div>COLUMN IN FILE</div><div></div><div>FIELD IN BOM</div>
             </div>
             {headers.map(h => {
               const sample = rawRows.slice(0,3).map(r => r[h]).filter(Boolean).join(", ");
@@ -3102,14 +3443,14 @@ function CsvExcelImporter({ parts, saveParts, projects, saveProjects, bomItems, 
             })}
           </div>
 
-          {!hasName && <div style={{ color: "var(--orange)", fontSize: 13, marginBottom: 10 }}>⚠️ Bitte mindestens „Name / Bezeichnung" zuordnen.</div>}
+          {!hasName && <div style={{ color: "var(--orange)", fontSize: 13, marginBottom: 10 }}>⚠️ Please map at least "Name / Designation".</div>}
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
             <div style={{ fontSize: 12, color: "var(--text2)", alignSelf: "center" }}>
-              {fieldsMapped.filter(f => f !== "_ignore").length} Felder zugeordnet
+              {fieldsMapped.filter(f => f !== "_ignore").length} fields mapped
             </div>
             <button className="btn btn-primary" disabled={!hasName} onClick={applyMapping}>
-              Vorschau →
+              Preview →
             </button>
           </div>
         </div>
@@ -3120,32 +3461,32 @@ function CsvExcelImporter({ parts, saveParts, projects, saveProjects, bomItems, 
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>
-              {editableItems.filter(i => i._enabled).length} / {editableItems.length} Positionen
+              {editableItems.filter(i => i._enabled).length} / {editableItems.length} items
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => setEditableItems(its => its.map(i => ({...i,_enabled:true})))}>Alle</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => setEditableItems(its => its.map(i => ({...i,_enabled:false})))}>Keine</button>
-              <button className="btn btn-secondary btn-sm" onClick={() => setCsvStep(2)}>← Zurück</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setEditableItems(its => its.map(i => ({...i,_enabled:true})))}>All</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setEditableItems(its => its.map(i => ({...i,_enabled:false})))}>None</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => setCsvStep(2)}>← Back</button>
             </div>
           </div>
 
           {/* Target project */}
           <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, padding: 12, marginBottom: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap" }}>📁 Importieren in:</div>
+            <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap" }}>📁 Import into:</div>
             <select style={{ background: "var(--bg3)", border: "1px solid var(--border2)", color: "var(--text)", padding: "6px 10px", borderRadius: 6, fontSize: 13, fontFamily: "IBM Plex Sans" }}
               value={targetProject} onChange={e => setTargetProject(e.target.value)}>
-              <option value="new">+ Neues Projekt</option>
+              <option value="new">+ New project</option>
               {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             {targetProject === "new" && (
-              <input value={newProjectName} onChange={e => setNewProjectName(e.target.value)} placeholder="Projektname"
+              <input value={newProjectName} onChange={e => setNewProjectName(e.target.value)} placeholder="Project name"
                 style={{ background: "var(--bg3)", border: "1px solid var(--border2)", color: "var(--text)", padding: "6px 10px", borderRadius: 6, fontSize: 13, fontFamily: "IBM Plex Sans", flex: 1, minWidth: 160 }} />
             )}
           </div>
 
           <div className="table-wrap" style={{ marginBottom: 14, maxHeight: 420, overflowY: "auto" }}>
             <div className="import-item-row" style={{ background: "var(--bg3)", fontWeight: 600, color: "var(--text2)", fontSize: 11, letterSpacing: "0.04em", position: "sticky", top: 0, zIndex: 1 }}>
-              <div>✓</div><div>Name</div><div>Qty</div><div>Kategorie</div><div>MPN</div><div>Referenz</div><div></div>
+              <div>✓</div><div>Name</div><div>Qty</div><div>Category</div><div>MPN</div><div>Reference</div><div></div>
             </div>
             {editableItems.map(item => (
               <div key={item._id} className="import-item-row" style={{ opacity: item._enabled ? 1 : 0.4 }}>
@@ -3171,7 +3512,7 @@ function CsvExcelImporter({ parts, saveParts, projects, saveProjects, bomItems, 
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
             <button className="btn btn-primary" disabled={importing || editableItems.filter(i => i._enabled).length === 0 || (targetProject === "new" && !newProjectName)} onClick={doImport}>
-              {importing ? <><span className="spinner" /> Importiere…</> : `✅ ${editableItems.filter(i => i._enabled).length} Positionen importieren`}
+              {importing ? <><span className="spinner" /> Importing…</> : `✅ Import ${editableItems.filter(i => i._enabled).length} items`}
             </button>
           </div>
         </div>
@@ -3181,10 +3522,10 @@ function CsvExcelImporter({ parts, saveParts, projects, saveProjects, bomItems, 
       {csvStep === 4 && importDone && (
         <div style={{ textAlign: "center", padding: "48px 24px" }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
-          <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Import erfolgreich!</div>
-          <div style={{ color: "var(--text2)", fontSize: 14, marginBottom: 24 }}>Projekt: <strong style={{ color: "var(--text)" }}>{importDone.project}</strong></div>
+          <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Import successful!</div>
+          <div style={{ color: "var(--text2)", fontSize: 14, marginBottom: 24 }}>Project: <strong style={{ color: "var(--text)" }}>{importDone.project}</strong></div>
           <div style={{ display: "flex", gap: 16, justifyContent: "center", marginBottom: 28 }}>
-            {[{val:importDone.total,label:"Positionen",color:"var(--blue)"},{val:importDone.addedParts,label:"Neue Bauteile in DB",color:"var(--green)"},{val:importDone.addedItems,label:"BOM-Einträge",color:"var(--purple)"}].map(s => (
+            {[{val:importDone.total,label:"Items",color:"var(--blue)"},{val:importDone.addedParts,label:"New parts in DB",color:"var(--green)"},{val:importDone.addedItems,label:"BOM entries",color:"var(--purple)"}].map(s => (
               <div key={s.label} style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 24px", minWidth: 110 }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: s.color, fontFamily: "IBM Plex Mono" }}>{s.val}</div>
                 <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 2 }}>{s.label}</div>
@@ -3192,8 +3533,8 @@ function CsvExcelImporter({ parts, saveParts, projects, saveProjects, bomItems, 
             ))}
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-            <button className="btn btn-secondary" onClick={reset}>Weiteren Import</button>
-            <button className="btn btn-primary" onClick={() => window.dispatchEvent(new CustomEvent("switchTab", { detail: "bom" }))}>→ Zur Stückliste</button>
+            <button className="btn btn-secondary" onClick={reset}>Another import</button>
+            <button className="btn btn-primary" onClick={() => window.dispatchEvent(new CustomEvent("switchTab", { detail: { tab: "bom", projectId: importDone.projectId } }))}>→ Go to BOM</button>
           </div>
         </div>
       )}
@@ -3312,7 +3653,7 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
           partId: existing.id,
           quantity: parseInt(item.quantity) || 1,
           reference: item.reference || "",
-          notes: item.value ? `Wert: ${item.value}` : "",
+          notes: item.value ? `Value: ${item.value}` : "",
         });
         addedItems++;
       }
@@ -3320,7 +3661,7 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
 
     saveParts(newParts);
     saveBom(newBomEntries);
-    setImportDone({ project: project.name, addedParts, addedItems, total: enabledItems.length });
+    setImportDone({ project: project.name, projectId: project.id, addedParts, addedItems, total: enabledItems.length });
     setStep(3);
     setImporting(false);
   };
@@ -3331,13 +3672,13 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
     setNewProjectName(""); setTargetProject("new");
   };
 
-  const CATS = ["Widerstand", "Kondensator", "Induktivität", "IC", "Transistor", "Diode", "LED", "Relais", "Stecker", "Schalter", "Sensor", "MCU", "MOSFET", "Modul", "Mechanik", "Kabel", "Sonstiges"];
+  const CATS = ["Resistor", "Capacitor", "Inductor", "IC", "Transistor", "Diode", "LED", "Relay", "Connector", "Switch", "Sensor", "MCU", "MOSFET", "Module", "Mechanical", "Cable", "Other"];
 
   return (
     <div>
       <div className="section-header">
         <div className="section-title">📥 BOM Import</div>
-        {step > 1 && mode === "ai" && <button className="btn btn-secondary" onClick={reset}>↺ Neu starten</button>}
+        {step > 1 && mode === "ai" && <button className="btn btn-secondary" onClick={reset}>↺ Start over</button>}
       </div>
 
       {/* Mode switcher */}
@@ -3346,7 +3687,7 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
           📊 CSV / Excel
         </button>
         <button className={`tab-inner-btn ${mode === "ai" ? "active" : ""}`} onClick={() => { setMode("ai"); }}>
-          🤖 KI-Import (beliebige Formate)
+          🤖 AI Import (any format)
         </button>
       </div>
 
@@ -3358,9 +3699,9 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
       {/* Steps */}
       <div className="import-steps">
         {[
-          { n: 1, label: "Datei / Text" },
-          { n: 2, label: "Prüfen & Bearbeiten" },
-          { n: 3, label: "Importiert" },
+          { n: 1, label: "File / Text" },
+          { n: 2, label: "Review & Edit" },
+          { n: 3, label: "Imported" },
         ].map(s => (
           <div key={s.n} className="import-step">
             <div className={`step-circle ${step > s.n ? "done" : step === s.n ? "active" : ""}`}>
@@ -3375,8 +3716,8 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
       {step === 1 && (
         <div>
           <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            <button className={`tab-inner-btn ${!pasteMode ? "active" : ""}`} onClick={() => setPasteMode(false)}>📁 Datei hochladen</button>
-            <button className={`tab-inner-btn ${pasteMode ? "active" : ""}`} onClick={() => setPasteMode(true)}>📋 Text einfügen</button>
+            <button className={`tab-inner-btn ${!pasteMode ? "active" : ""}`} onClick={() => setPasteMode(false)}>📁 Upload file</button>
+            <button className={`tab-inner-btn ${pasteMode ? "active" : ""}`} onClick={() => setPasteMode(true)}>📋 Paste text</button>
           </div>
 
           {!pasteMode ? (
@@ -3391,15 +3732,15 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
               {fileName
                 ? <div className="drop-zone-text" style={{ color: "var(--green)" }}>{fileName}</div>
                 : <>
-                    <div className="drop-zone-text">Datei hierher ziehen oder klicken</div>
-                    <div className="drop-zone-sub">CSV, JSON, TXT, XML, KiCad, Eagle, Altium, YAML – jedes Format</div>
+                    <div className="drop-zone-text">Drag file here or click</div>
+                    <div className="drop-zone-sub">CSV, JSON, TXT, XML, KiCad, Eagle, Altium, YAML – any format</div>
                   </>}
             </div>
           ) : (
             <div>
               <textarea
                 style={{ width: "100%", background: "var(--bg2)", border: "1px solid var(--border2)", color: "var(--text)", padding: "12px 14px", borderRadius: 8, fontFamily: "IBM Plex Mono, monospace", fontSize: 12, minHeight: 220, resize: "vertical" }}
-                placeholder={"Füge hier den Report-Inhalt ein…\n\nBeispiele:\n- CSV mit Spalten: Qty, Reference, Value, Footprint\n- JSON-Array mit Bauteilen\n- Freitext wie: 2x ATmega328P, 10x 10kΩ 0805…\n- KiCad Netliste, Eagle BOM, …"}
+                placeholder={"Paste report content here…\n\nExamples:\n- CSV with columns: Qty, Reference, Value, Footprint\n- JSON array of parts\n- Free text like: 2x ATmega328P, 10x 10kΩ 0805…\n- KiCad netlist, Eagle BOM, …"}
                 value={rawText}
                 onChange={e => setRawText(e.target.value)}
               />
@@ -3409,11 +3750,11 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
           {rawText && (
             <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ fontSize: 12, color: "var(--text2)" }}>
-                {rawText.length.toLocaleString()} Zeichen · {rawText.split("\n").length} Zeilen
+                {rawText.length.toLocaleString()} chars · {rawText.split("\n").length} lines
               </div>
               <div style={{ marginLeft: "auto" }}>
                 <button className="btn btn-ai" onClick={handleParse} disabled={parsing}>
-                  {parsing ? <><span className="spinner" /> Analysiere…</> : "🤖 KI-Analyse starten"}
+                  {parsing ? <><span className="spinner" /> Analyzing…</> : "🤖 Start AI analysis"}
                 </button>
               </div>
             </div>
@@ -3422,15 +3763,15 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
           {parseError && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{parseError}</div>}
 
           <div style={{ marginTop: 28, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, padding: 16 }}>
-            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: "var(--text2)" }}>Unterstützte Formate</div>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: "var(--text2)" }}>Supported formats</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {["KiCad BOM", "Eagle BOM", "Altium BOM", "CSV/Excel-Export", "JSON-Array", "Freitext", "Markdown-Tabelle", "YAML", "FocusPilot Reports", "Eigene Formate"].map(f => (
                 <span key={f} className="field-chip">{f}</span>
               ))}
             </div>
             <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 10 }}>
-              Die KI erkennt das Format automatisch und extrahiert Bauteile, Mengen, MPNs und Referenzbezeichner.
-              Unbekannte Felder werden bestmöglich interpretiert.
+              The AI detects the format automatically and extracts parts, quantities, MPNs and reference designators.
+              Unknown fields are interpreted as best as possible.
             </div>
           </div>
         </div>
@@ -3446,7 +3787,7 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
               <div style={{ fontWeight: 600, marginBottom: 4 }}>
                 Format erkannt: <span style={{ color: "var(--blue)", fontFamily: "IBM Plex Mono, monospace" }}>{parseResult.format_detected}</span>
                 <span style={{ marginLeft: 10, fontSize: 11, padding: "1px 8px", borderRadius: 4, background: parseResult.confidence === "high" ? "rgba(63,185,80,0.15)" : "rgba(210,153,34,0.15)", color: parseResult.confidence === "high" ? "var(--green)" : "var(--orange)" }}>
-                  {parseResult.confidence === "high" ? "Sicher" : parseResult.confidence === "medium" ? "Unsicher" : "Niedrig"}
+                  {parseResult.confidence === "high" ? "Confident" : parseResult.confidence === "medium" ? "Uncertain" : "Low"}
                 </span>
               </div>
               <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 8 }}>{parseResult.notes}</div>
@@ -3456,21 +3797,21 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
             </div>
           </div>
 
-          {/* Ziel-Projekt */}
+          {/* Target project */}
           <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, padding: 14, marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-            <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap" }}>📁 Importieren in:</div>
+            <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap" }}>📁 Import into:</div>
             <select
               style={{ background: "var(--bg3)", border: "1px solid var(--border2)", color: "var(--text)", padding: "6px 12px", borderRadius: 6, fontSize: 13, fontFamily: "IBM Plex Sans" }}
               value={targetProject} onChange={e => setTargetProject(e.target.value)}
             >
-              <option value="new">+ Neues Projekt</option>
+              <option value="new">+ New project</option>
               {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             {targetProject === "new" && (
               <input
                 value={newProjectName}
                 onChange={e => setNewProjectName(e.target.value)}
-                placeholder="Projektname"
+                placeholder="Project name"
                 style={{ background: "var(--bg3)", border: "1px solid var(--border2)", color: "var(--text)", padding: "6px 12px", borderRadius: 6, fontSize: 13, fontFamily: "IBM Plex Sans", flex: 1, minWidth: 180 }}
               />
             )}
@@ -3479,11 +3820,11 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
           {/* Items Table */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div style={{ fontWeight: 600, fontSize: 14 }}>
-              {items.filter(i => i._enabled).length} / {items.length} Positionen ausgewählt
+              {items.filter(i => i._enabled).length} / {items.length} items selected
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => setItems(items.map(i => ({ ...i, _enabled: true })))}>Alle auswählen</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => setItems(items.map(i => ({ ...i, _enabled: false })))}>Alle abwählen</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setItems(items.map(i => ({ ...i, _enabled: true })))}>Select all</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setItems(items.map(i => ({ ...i, _enabled: false })))}>Deselect all</button>
             </div>
           </div>
 
@@ -3491,11 +3832,11 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
             {/* Header */}
             <div className="import-item-row" style={{ background: "var(--bg3)", fontWeight: 600, color: "var(--text2)", fontSize: 11, letterSpacing: "0.04em" }}>
               <div>✓</div>
-              <div>Name / Beschreibung</div>
+              <div>Name / Description</div>
               <div>Qty</div>
-              <div>Kategorie</div>
+              <div>Category</div>
               <div>MPN</div>
-              <div>Referenz</div>
+              <div>Reference</div>
               <div></div>
             </div>
             {items.map(item => (
@@ -3538,11 +3879,11 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <button className="btn btn-secondary" onClick={() => setStep(1)}>← Zurück</button>
+            <button className="btn btn-secondary" onClick={() => setStep(1)}>← Back</button>
             <button className="btn btn-primary"
               disabled={importing || items.filter(i => i._enabled).length === 0 || (targetProject === "new" && !newProjectName)}
               onClick={handleImport}>
-              {importing ? <><span className="spinner" /> Importiere…</> : `✅ ${items.filter(i => i._enabled).length} Positionen importieren`}
+              {importing ? <><span className="spinner" /> Importing…</> : `✅ Import ${items.filter(i => i._enabled).length} items`}
             </button>
           </div>
         </div>
@@ -3552,15 +3893,15 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
       {step === 3 && importDone && (
         <div style={{ textAlign: "center", padding: "48px 24px" }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
-          <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Import erfolgreich!</div>
+          <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Import successful!</div>
           <div style={{ color: "var(--text2)", fontSize: 14, marginBottom: 24 }}>
-            Projekt: <strong style={{ color: "var(--text)" }}>{importDone.project}</strong>
+            Project: <strong style={{ color: "var(--text)" }}>{importDone.project}</strong>
           </div>
           <div style={{ display: "flex", gap: 16, justifyContent: "center", marginBottom: 28 }}>
             {[
-              { val: importDone.total, label: "Positionen", color: "var(--blue)" },
-              { val: importDone.addedParts, label: "Neue Bauteile in DB", color: "var(--green)" },
-              { val: importDone.addedItems, label: "BOM-Einträge", color: "var(--purple)" },
+              { val: importDone.total, label: "Items", color: "var(--blue)" },
+              { val: importDone.addedParts, label: "New parts in DB", color: "var(--green)" },
+              { val: importDone.addedItems, label: "BOM entries", color: "var(--purple)" },
             ].map(s => (
               <div key={s.label} style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 24px", minWidth: 110 }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: s.color, fontFamily: "IBM Plex Mono" }}>{s.val}</div>
@@ -3569,11 +3910,8 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
             ))}
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-            <button className="btn btn-secondary" onClick={reset}>Weiteren Import</button>
-            <button className="btn btn-primary" onClick={() => {
-              // Dispatch a custom event to switch tab - handled via window
-              window.dispatchEvent(new CustomEvent("switchTab", { detail: "bom" }));
-            }}>→ Zur Stückliste</button>
+            <button className="btn btn-secondary" onClick={reset}>Another import</button>
+            <button className="btn btn-primary" onClick={() => window.dispatchEvent(new CustomEvent("switchTab", { detail: { tab: "bom", projectId: importDone.projectId } }))}>→ Go to BOM</button>
           </div>
         </div>
       )}
@@ -3582,54 +3920,6 @@ function ImportTab({ parts, saveParts, projects, saveProjects, bomItems, saveBom
   );
 }
 
-// ── Sourcing API (Claude + Web Search) ───────────────────────────────────────
-async function findAliExpressStores(parts) {
-  // Search for each part individually, collect store mentions
-  const results = [];
-
-  for (const part of parts) {
-    const query = [part.mpn, part.name, part.value].filter(Boolean).join(" ");
-    const prompt = `Suche auf AliExpress nach: "${query}"
-Finde 3-5 konkrete AliExpress-Händler/Stores die dieses Bauteil verkaufen.
-Antworte NUR mit JSON, kein Markdown:
-{
-  "part": "${query}",
-  "stores": [
-    {
-      "storeName": "Exact Store Name on AliExpress",
-      "storeUrl": "https://www.aliexpress.com/store/...",
-      "productUrl": "https://www.aliexpress.com/item/...",
-      "priceEur": 1.23,
-      "minOrder": 1,
-      "rating": 4.8,
-      "note": "z.B. Großhändler, schneller Versand"
-    }
-  ]
-}
-Falls kein direkter Treffer: gib ähnliche Alternativen. Schätze Preise realistisch.`;
-
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1000,
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
-      const data = await res.json();
-      const text = data.content?.filter(c => c.type === "text").map(c => c.text).join("") || "{}";
-      const clean = text.replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(clean);
-      results.push({ partId: part.id, partName: part.name, query, stores: parsed.stores || [] });
-    } catch (e) {
-      results.push({ partId: part.id, partName: part.name, query, stores: [], error: e.message });
-    }
-  }
-  return results;
-}
 
 function aggregateStores(searchResults) {
   // Count how many parts each store covers
@@ -3662,15 +3952,21 @@ function aggregateStores(searchResults) {
 }
 
 // ── Sourcing Tab ──────────────────────────────────────────────────────────────
-function SourcingTab({ projects, bomItems, parts }) {
+function SourcingTab({ projects, bomItems, parts, suppliers = [], saveSuppliers = null }) {
   const [selectedProject, setSelectedProject] = useState("");
   const [searching, setSearching] = useState(false);
-  const [progress, setProgress] = useState({ done: 0, total: 0, current: "" });
+  const [progress, setProgress] = useState({ done: 0, total: 0, current: "", phase: "" });
   const [searchResults, setSearchResults] = useState(null);
   const [aggregated, setAggregated] = useState([]);
+  const [distributorResults, setDistributorResults] = useState<{partId:string,partName:string,partMpn:string,offers:{distributor:string,url:string,sku:string,price:number|null,stock:number|null,currency:string}[],error?:string}[]|null>(null);
   const [expandedStore, setExpandedStore] = useState(null);
+  const [expandedDist, setExpandedDist] = useState(null);
   const [error, setError] = useState("");
-  const [filterMin, setFilterMin] = useState(1); // min parts coverage
+  const [filterMin, setFilterMin] = useState(1);
+  const [resultTab, setResultTab] = useState<"dist"|"ali">("dist");
+
+  const hasNexar = !!getNexarId() && !!getNexarSecret();
+  const hasTavily = !!getTavilyKey();
 
   const projectBom = bomItems.filter(b => b.projectId === selectedProject);
   const projectParts = projectBom.map(b => {
@@ -3682,45 +3978,60 @@ function SourcingTab({ projects, bomItems, parts }) {
 
   const handleSearch = async () => {
     if (!selectedProject || projectParts.length === 0) return;
-    setSearching(true); setError(""); setSearchResults(null); setAggregated([]);
-    setProgress({ done: 0, total: projectParts.length, current: "" });
+    setSearching(true); setError(""); setSearchResults(null); setAggregated([]); setDistributorResults(null);
 
-    const results = [];
+    // Phase 1: Nexar distributor search (real stock)
+    if (hasNexar) {
+      const distResults = [];
+      for (let i = 0; i < projectParts.length; i++) {
+        const part = projectParts[i];
+        setProgress({ done: i, total: projectParts.length, current: part.name, phase: "Distributors (Nexar)" });
+        try {
+          const offers = await nexarSearchMpn(part.mpn || part.name, part.name);
+          distResults.push({ partId: part.id, partName: part.name, partMpn: part.mpn, offers });
+        } catch (e: any) {
+          distResults.push({ partId: part.id, partName: part.name, partMpn: part.mpn, offers: [], error: e.message });
+        }
+      }
+      setDistributorResults(distResults);
+      setResultTab("dist");
+    }
+
+    // Phase 2: AliExpress search (Tavily live or AI fallback)
+    const aliResults = [];
     for (let i = 0; i < projectParts.length; i++) {
       const part = projectParts[i];
-      setProgress({ done: i, total: projectParts.length, current: part.name });
-      const query = [part.mpn, part.name, part.value].filter(Boolean).join(" ");
-      const prompt = `Suche auf AliExpress nach dem Elektronikbauteil: "${query}"
+      setProgress({ done: i, total: projectParts.length, current: part.name, phase: hasTavily ? "AliExpress (live)" : "AliExpress (AI)"});
+      const query = [part.mpn, part.name].filter(Boolean).join(" ");
+      try {
+        if (hasTavily) {
+          const webResults = await tavilySearchAliExpress(query);
+          const stores = await parseAliExpressResults(part, webResults);
+          aliResults.push({ partId: part.id, partName: part.name, partMpn: part.mpn, query, stores });
+        } else {
+          const prompt = `Suche auf AliExpress nach dem Elektronikbauteil: "${query}"
 Finde 3-5 konkrete AliExpress-Händler die dieses Bauteil verkaufen.
 Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
 {"stores":[{"storeName":"Name des Stores","storeUrl":"https://www.aliexpress.com/store/...","productUrl":"https://www.aliexpress.com/item/...","priceEur":1.23,"minOrder":1,"rating":4.8,"note":"Kurze Notiz"}]}`;
-
-      try {
-        const res = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: apiHeaders(getApiKey()),
-          body: JSON.stringify({
-            model: "claude-sonnet-4-6",
-            max_tokens: 1200,
-            tools: [{ type: "web_search_20250305", name: "web_search" }],
-            messages: [{ role: "user", content: prompt }],
-          }),
-        });
-        if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.statusText); }
-        const data = await res.json();
-        const textBlocks = data.content?.filter(c => c.type === "text").map(c => c.text) || [];
-        const text = textBlocks.join("");
-        const clean = text.replace(/```json|```/g, "").trim();
-        const parsed = JSON.parse(clean);
-        results.push({ partId: part.id, partName: part.name, partMpn: part.mpn, query, stores: parsed.stores || [] });
-      } catch (e) {
-        results.push({ partId: part.id, partName: part.name, partMpn: part.mpn, query, stores: [], error: e.message });
+          const text = await callAI([{ role: "user", content: prompt }], 1200);
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) throw new Error("No JSON response from model");
+          const parsed = JSON.parse(jsonMatch[0]);
+          aliResults.push({ partId: part.id, partName: part.name, partMpn: part.mpn, query, stores: parsed.stores || [] });
+        }
+      } catch (e: any) {
+        aliResults.push({ partId: part.id, partName: part.name, partMpn: part.mpn, query, stores: [], error: e.message });
       }
     }
 
-    setProgress({ done: projectParts.length, total: projectParts.length, current: "" });
-    setSearchResults(results);
-    setAggregated(aggregateStores(results));
+    setProgress({ done: projectParts.length, total: projectParts.length, current: "", phase: "" });
+    setSearchResults(aliResults);
+    setAggregated(aggregateStores(aliResults));
+    if (!hasNexar) setResultTab("ali");
+    const errors = aliResults.filter(r => r.error);
+    if (!hasNexar && errors.length === aliResults.length) {
+      setError(`Search failed: ${errors[0]?.error}`);
+    }
     setSearching(false);
   };
 
@@ -3735,35 +4046,38 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
   return (
     <div>
       <div className="section-header">
-        <div className="section-title">🛍️ AliExpress Händler-Optimierer</div>
+        <div className="section-title">🛍️ Parts Sourcing</div>
       </div>
 
       {/* Beschreibung */}
-      <div style={{ background: "rgba(88,166,255,0.06)", border: "1px solid rgba(88,166,255,0.15)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "var(--text2)", lineHeight: 1.6 }}>
-        Wähle ein Projekt. Die KI sucht für jedes Bauteil passende AliExpress-Händler und zeigt dann,
-        welche Stores <strong style={{ color: "var(--text)" }}>mehrere Bauteile gleichzeitig</strong> anbieten —
-        so minimierst du Bestellungen, Versandkosten und Wartezeit.
+      <div style={{ background: "rgba(88,166,255,0.06)", border: "1px solid rgba(88,166,255,0.15)", borderRadius: 8, padding: "12px 16px", marginBottom: 16, fontSize: 13, color: "var(--text2)", lineHeight: 1.6 }}>
+        {hasNexar
+          ? <><strong style={{ color: "var(--green)" }}>✓ Nexar active</strong> — real stock from Mouser, DigiKey, LCSC, Farnell etc.{hasTavily ? <><br /><strong style={{ color: "var(--green)" }}>✓ Tavily active</strong> — live AliExpress search.</> : <><br />Without Tavily key: AliExpress results from AI knowledge (no live data).</>}</>
+          : hasTavily
+          ? <><strong style={{ color: "var(--green)" }}>✓ Tavily active</strong> — live AliExpress search. Without Nexar key: no real distributor stock data.</>
+          : <>Without Nexar/Tavily keys: AI estimates shops from training knowledge. For live data add API keys under <strong style={{ color: "var(--text)" }}>🔑 API Key</strong>.</>
+        }
       </div>
 
       {/* Projekt-Auswahl */}
       <div style={{ display: "flex", gap: 12, alignItems: "flex-end", marginBottom: 20, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 5, fontWeight: 500 }}>Projekt</div>
+          <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 5, fontWeight: 500 }}>Project</div>
           <select
             value={selectedProject}
-            onChange={e => { setSelectedProject(e.target.value); setSearchResults(null); setAggregated([]); }}
+            onChange={e => { setSelectedProject(e.target.value); setSearchResults(null); setAggregated([]); setDistributorResults(null); }}
             style={{ width: "100%", background: "var(--bg2)", border: "1px solid var(--border2)", color: "var(--text)", padding: "8px 12px", borderRadius: 6, fontSize: 13, fontFamily: "IBM Plex Sans" }}
           >
-            <option value="">— Projekt wählen —</option>
+            <option value="">— Select project —</option>
             {projects.map(p => {
               const count = bomItems.filter(b => b.projectId === p.id).length;
-              return <option key={p.id} value={p.id}>{p.name} ({count} Bauteile)</option>;
+              return <option key={p.id} value={p.id}>{p.name} ({count} parts)</option>;
             })}
           </select>
         </div>
         {selectedProject && (
           <div style={{ fontSize: 12, color: "var(--text2)", paddingBottom: 10 }}>
-            <span style={{ color: "var(--blue)", fontFamily: "IBM Plex Mono", fontSize: 13 }}>{totalParts}</span> Positionen im Projekt
+            <span style={{ color: "var(--blue)", fontFamily: "IBM Plex Mono", fontSize: 13 }}>{totalParts}</span> items in project
           </div>
         )}
         <button
@@ -3773,8 +4087,8 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
           onClick={handleSearch}
         >
           {searching
-            ? <><span className="spinner" /> Suche läuft…</>
-            : "🔍 Händler suchen"}
+            ? <><span className="spinner" /> Searching…</>
+            : "🔍 Find vendors"}
         </button>
       </div>
 
@@ -3784,15 +4098,13 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
             <span style={{ color: "var(--text2)" }}>
               <span className="status-dot" style={{ display: "inline-block", marginRight: 6 }} />
-              Suche: <strong style={{ color: "var(--text)" }}>{progress.current}</strong>
+              {progress.phase && <span style={{ color: "var(--blue)", marginRight: 6 }}>[{progress.phase}]</span>}
+              <strong style={{ color: "var(--text)" }}>{progress.current}</strong>
             </span>
             <span style={{ fontFamily: "IBM Plex Mono", color: "var(--blue)" }}>{progress.done} / {progress.total}</span>
           </div>
           <div style={{ background: "var(--bg3)", borderRadius: 4, height: 6, overflow: "hidden" }}>
-            <div style={{ background: "var(--green)", height: "100%", width: `${(progress.done / progress.total) * 100}%`, transition: "width 0.4s ease", borderRadius: 4 }} />
-          </div>
-          <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 6 }}>
-            Jedes Bauteil wird einzeln auf AliExpress gesucht — dies dauert einige Sekunden pro Teil.
+            <div style={{ background: "var(--green)", height: "100%", width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%`, transition: "width 0.4s ease", borderRadius: 4 }} />
           </div>
         </div>
       )}
@@ -3800,16 +4112,77 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
       {/* Fehler */}
       {error && <div style={{ color: "var(--red)", fontSize: 13, marginBottom: 14 }}>{error}</div>}
 
-      {/* Ergebnisse */}
-      {aggregated.length > 0 && !searching && (
+      {/* Result tabs */}
+      {(distributorResults || searchResults) && !searching && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+          {distributorResults && (
+            <button onClick={() => setResultTab("dist")}
+              className={resultTab === "dist" ? "btn btn-primary" : "btn btn-secondary"}
+              style={{ fontSize: 13 }}>
+              🏭 Distributors ({distributorResults.reduce((s,r)=>s+r.offers.length,0)} offers)
+            </button>
+          )}
+          {searchResults && (
+            <button onClick={() => setResultTab("ali")}
+              className={resultTab === "ali" ? "btn btn-primary" : "btn btn-secondary"}
+              style={{ fontSize: 13 }}>
+              🛍️ AliExpress ({aggregated.length} stores){!hasTavily && <span style={{ fontSize: 10, color: "var(--orange)", marginLeft: 4 }}>AI</span>}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Distributor results */}
+      {distributorResults && !searching && resultTab === "dist" && (
+        <div>
+          {distributorResults.length === 0 && <div style={{ color: "var(--text2)", fontSize: 13 }}>No Nexar results.</div>}
+          {distributorResults.map(r => {
+            const isExp = expandedDist === r.partId;
+            return (
+              <div key={r.partId} style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 10, marginBottom: 8, overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", cursor: "pointer" }}
+                  onClick={() => setExpandedDist(isExp ? null : r.partId)}>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>{r.partName}</span>
+                    {r.partMpn && <span style={{ fontFamily: "IBM Plex Mono", fontSize: 11, color: "var(--text3)", marginLeft: 8 }}>{r.partMpn}</span>}
+                  </div>
+                  {r.error
+                    ? <span style={{ fontSize: 12, color: "var(--red)" }}>Error</span>
+                    : <span style={{ fontSize: 12, color: r.offers.length > 0 ? "var(--green)" : "var(--text3)" }}>{r.offers.length} offers</span>
+                  }
+                  <span style={{ color: "var(--text3)", fontSize: 12 }}>{isExp ? "▲" : "▼"}</span>
+                </div>
+                {isExp && (
+                  <div style={{ borderTop: "1px solid var(--border)", padding: "0 16px 12px" }}>
+                    {r.error && <div style={{ color: "var(--red)", fontSize: 12, paddingTop: 10 }}>{r.error}</div>}
+                    {r.offers.length === 0 && !r.error && <div style={{ color: "var(--text3)", fontSize: 12, paddingTop: 10 }}>No stock found.</div>}
+                    {r.offers.map((o, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: i < r.offers.length - 1 ? "1px solid var(--border)" : "none", fontSize: 13 }}>
+                        <span style={{ fontWeight: 600, minWidth: 100, color: "var(--blue)" }}>{o.distributor}</span>
+                        {o.sku && <span style={{ fontFamily: "IBM Plex Mono", fontSize: 11, color: "var(--text3)" }}>{o.sku}</span>}
+                        {o.stock !== null && <span style={{ fontSize: 12, color: o.stock > 0 ? "var(--green)" : "var(--red)" }}>{o.stock > 0 ? `${o.stock.toLocaleString()} pcs` : "Out of stock"}</span>}
+                        {o.price !== null && <span className="price-tag">{o.price.toFixed(4)} {o.currency}</span>}
+                        {o.url && <a href={o.url} target="_blank" rel="noopener" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none", marginLeft: "auto" }}>↗ Product</a>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* AliExpress Ergebnisse */}
+      {aggregated.length > 0 && !searching && resultTab === "ali" && (
         <div>
           {/* Summary bar */}
           <div style={{ display: "flex", gap: 16, marginBottom: 18, flexWrap: "wrap" }}>
             {[
-              { val: aggregated.length, label: "Stores gefunden", color: "var(--blue)" },
-              { val: aggregated.filter(s => s.parts.length >= 2).length, label: "mit ≥2 Bauteilen", color: "var(--green)" },
-              { val: aggregated.filter(s => s.parts.length >= Math.ceil(totalParts * 0.5)).length, label: `mit ≥50% Abdeckung`, color: "var(--orange)" },
-              { val: searchResults?.filter(r => r.error).length || 0, label: "Fehler", color: "var(--red)" },
+              { val: aggregated.length, label: "Stores found", color: "var(--blue)" },
+              { val: aggregated.filter(s => s.parts.length >= 2).length, label: "with ≥2 parts", color: "var(--green)" },
+              { val: aggregated.filter(s => s.parts.length >= Math.ceil(totalParts * 0.5)).length, label: `with ≥50% coverage`, color: "var(--orange)" },
+              { val: searchResults?.filter(r => r.error).length || 0, label: "Errors", color: "var(--red)" },
             ].map(s => (
               <div key={s.label} style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 16px", display: "flex", gap: 10, alignItems: "center" }}>
                 <span style={{ fontSize: 20, fontWeight: 700, fontFamily: "IBM Plex Mono", color: s.color }}>{s.val}</span>
@@ -3820,13 +4193,13 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
 
           {/* Filter */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <span style={{ fontSize: 13, color: "var(--text2)" }}>Mindestens</span>
+            <span style={{ fontSize: 13, color: "var(--text2)" }}>At least</span>
             {[1, 2, 3].map(n => (
               <button key={n} className={`btn btn-sm ${filterMin === n ? "btn-primary" : "btn-secondary"}`} onClick={() => setFilterMin(n)}>
-                {n} Bauteil{n > 1 ? "e" : ""}
+                {n} part{n > 1 ? "s" : ""}
               </button>
             ))}
-            <span style={{ fontSize: 12, color: "var(--text3)" }}>→ {filteredStores.length} Stores</span>
+            <span style={{ fontSize: 12, color: "var(--text3)" }}>→ {filteredStores.length} stores</span>
           </div>
 
           {/* Store cards */}
@@ -3853,7 +4226,7 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                       <span style={{ fontWeight: 600, fontSize: 14 }}>{store.storeName}</span>
-                      {idx === 0 && <span style={{ fontSize: 10, background: "rgba(57,211,83,0.15)", color: "var(--green)", padding: "1px 8px", borderRadius: 4, fontWeight: 600 }}>BESTE WAHL</span>}
+                      {idx === 0 && <span style={{ fontSize: 10, background: "rgba(44,74,107,0.4)", color: "#4493f8", border: "1px solid rgba(68,147,248,0.3)", padding: "1px 8px", borderRadius: 4, fontWeight: 600 }}>BEST CHOICE</span>}
                       {store.rating && <span style={{ fontSize: 12, color: "var(--orange)" }}>★ {store.rating.toFixed(1)}</span>}
                     </div>
                     {/* Coverage bar */}
@@ -3862,7 +4235,7 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
                         <div style={{ background: coverageColor(store.parts.length), height: "100%", width: `${coverage * 100}%`, borderRadius: 3, transition: "width 0.4s" }} />
                       </div>
                       <span style={{ fontSize: 12, fontFamily: "IBM Plex Mono", color: coverageColor(store.parts.length) }}>
-                        {store.parts.length}/{totalParts} Bauteile
+                        {store.parts.length}/{totalParts} parts
                       </span>
                       <span style={{ fontSize: 11, color: "var(--text3)" }}>({Math.round(coverage * 100)}%)</span>
                     </div>
@@ -3873,7 +4246,7 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
                     {store.totalMinPrice > 0 && (
                       <div className="price-tag" style={{ fontSize: 14, marginBottom: 4 }}>~{store.totalMinPrice.toFixed(2)} €</div>
                     )}
-                    <div style={{ fontSize: 11, color: "var(--text3)" }}>Gesamt (geschätzt)</div>
+                    <div style={{ fontSize: 11, color: "var(--text3)" }}>Total (estimated)</div>
                   </div>
 
                   <div style={{ color: "var(--text3)", fontSize: 16, flexShrink: 0 }}>{isExpanded ? "▲" : "▼"}</div>
@@ -3883,13 +4256,31 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
                 {isExpanded && (
                   <div style={{ borderTop: "1px solid var(--border)", padding: "0 16px 14px" }}>
                     <div style={{ paddingTop: 12, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 12, color: "var(--text2)", fontWeight: 600 }}>ANGEBOTENE BAUTEILE</span>
-                      {store.storeUrl && (
-                        <a href={store.storeUrl} target="_blank" rel="noopener"
-                          style={{ fontSize: 12, color: "var(--blue)", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
-                          🏪 Store öffnen ↗
-                        </a>
-                      )}
+                      <span style={{ fontSize: 12, color: "var(--text2)", fontWeight: 600 }}>OFFERED PARTS</span>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        {saveSuppliers && (
+                          <button className="btn btn-secondary" style={{ fontSize: 11, padding: "3px 10px" }}
+                            onClick={() => {
+                              const newEntries = store.parts.map(p => ({
+                                id: Date.now().toString() + Math.random().toString(36).slice(2),
+                                partId: p.partId, shopName: store.storeName, shopId: "",
+                                sku: "", searchUrl: p.productUrl || store.storeUrl || "",
+                                price: p.priceEur || null, currency: "EUR",
+                                notes: p.note || "", aiGenerated: true,
+                              }));
+                              const existing = suppliers.filter(s => !newEntries.some(e => e.partId === s.partId && s.shopName === store.storeName));
+                              saveSuppliers([...existing, ...newEntries]);
+                            }}>
+                            + Save as supplier
+                          </button>
+                        )}
+                        {store.storeUrl && (
+                          <a href={store.storeUrl} target="_blank" rel="noopener"
+                            style={{ fontSize: 12, color: "var(--blue)", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                            🏪 Open store ↗
+                          </a>
+                        )}
+                      </div>
                     </div>
                     {store.parts.map(p => (
                       <div key={p.partId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "1px solid var(--border)", fontSize: 13 }}>
@@ -3899,7 +4290,7 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
                         {p.minOrder && p.minOrder > 1 && <span style={{ fontSize: 11, color: "var(--text3)" }}>MOQ: {p.minOrder}</span>}
                         {p.productUrl && (
                           <a href={p.productUrl} target="_blank" rel="noopener"
-                            style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>↗ Produkt</a>
+                            style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>↗ Product</a>
                         )}
                         {p.note && <span style={{ fontSize: 11, color: "var(--text3)", fontStyle: "italic" }}>{p.note}</span>}
                       </div>
@@ -3911,7 +4302,7 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
                       const missing = projectParts.filter(p => !foundIds.has(p.id));
                       return missing.length > 0 && (
                         <div style={{ marginTop: 10 }}>
-                          <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 6 }}>NICHT BEI DIESEM STORE:</div>
+                          <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 6 }}>NOT AT THIS STORE:</div>
                           {missing.map(p => (
                             <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 12, color: "var(--text3)" }}>
                               <span style={{ color: "var(--red)", fontSize: 11 }}>✗</span>
@@ -3931,7 +4322,7 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
           {/* Parts with no results */}
           {searchResults?.some(r => r.stores.length === 0) && (
             <div style={{ background: "rgba(248,81,73,0.06)", border: "1px solid rgba(248,81,73,0.2)", borderRadius: 8, padding: "12px 16px", marginTop: 14 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: "var(--red)" }}>⚠️ Keine Treffer gefunden für:</div>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: "var(--red)" }}>⚠️ No results found for:</div>
               {searchResults.filter(r => r.stores.length === 0).map(r => (
                 <div key={r.partId} style={{ fontSize: 12, color: "var(--text2)", padding: "3px 0" }}>
                   • {r.partName} {r.partMpn && <span style={{ fontFamily: "IBM Plex Mono", color: "var(--text3)" }}>({r.partMpn})</span>}
@@ -3944,13 +4335,15 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
       )}
 
       {/* Empty state */}
-      {!searching && !searchResults && (
+      {!searching && !searchResults && !distributorResults && (
         <div className="empty-state" style={{ paddingTop: 60 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🛍️</div>
-          <h3>Händler-Optimierer</h3>
-          <p style={{ maxWidth: 380, margin: "0 auto", lineHeight: 1.6 }}>
-            Wähle ein Projekt und starte die Suche. Die KI analysiert jeden Artikel einzeln auf AliExpress
-            und zeigt welche Händler das größte Sortiment für dein Projekt haben.
+          <h3>Parts Sourcing</h3>
+          <p style={{ maxWidth: 400, margin: "0 auto", lineHeight: 1.6 }}>
+            Select a project and start searching.
+            {hasNexar && " Nexar provides real stock data from Mouser, DigiKey, LCSC and others."}
+            {hasTavily && " Tavily searches AliExpress live."}
+            {!hasNexar && !hasTavily && " For live data: enter a Nexar and/or Tavily key under 🔑 API Key."}
           </p>
         </div>
       )}
@@ -3973,7 +4366,7 @@ function ShopsTab({ shops, saveShops }) {
   };
 
   const deleteShop = (id) => {
-    if (DEFAULT_SHOPS.find(s => s.id === id)) { alert("Standard-Shop kann nicht gelöscht werden."); return; }
+    if (DEFAULT_SHOPS.find(s => s.id === id)) { alert("Default shop cannot be deleted."); return; }
     saveShops(shops.filter(s => s.id !== id));
   };
 
@@ -3985,35 +4378,35 @@ function ShopsTab({ shops, saveShops }) {
       <div className="section-header">
         <div className="section-title">
           🏪 Shops
-          <span className="badge">{shops.length} konfiguriert</span>
+          <span className="badge">{shops.length} configured</span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn btn-ai" onClick={() => setShowRegionSetup(true)}>
-            🌍 Shops für meine Region finden
+            🌍 Find shops for my region
           </button>
-          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Manuell hinzufügen</button>
+          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Add manually</button>
         </div>
       </div>
 
       <div style={{ background: "rgba(88,166,255,0.06)", border: "1px solid rgba(88,166,255,0.15)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "var(--text2)", lineHeight: 1.6 }}>
-        <strong style={{ color: "var(--text)" }}>Deine persönliche Shop-Liste.</strong> Shops sind regional sehr unterschiedlich —
-        was in Deutschland Mädler und Reichelt ist, ist in den USA McMaster-Carr und Digi-Key, in Japan Misumi und Monotaro.
-        Nutze <strong style={{ color: "var(--blue)" }}>„Shops für meine Region finden"</strong> damit die KI passende lokale Anbieter vorschlägt.
+        <strong style={{ color: "var(--text)" }}>Your personal shop list.</strong> Shops vary greatly by region —
+        what is Mädler and Reichelt in Germany is McMaster-Carr and Digi-Key in the USA, Misumi and Monotaro in Japan.
+        Use <strong style={{ color: "var(--blue)" }}>"Find shops for my region"</strong> to let the AI suggest suitable local suppliers.
       </div>
 
       {/* Globale Shops */}
       <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", letterSpacing: "0.07em", marginBottom: 10 }}>
-        🌐 GLOBAL — immer verfügbar
+        🌐 GLOBAL — always available
       </div>
       <div className="table-wrap" style={{ marginBottom: 20 }}>
         <table>
-          <thead><tr><th>Shop</th><th>Region</th><th>Spezialisierung</th><th>Website</th></tr></thead>
+          <thead><tr><th>Shop</th><th>Region</th><th>Speciality</th><th>Website</th></tr></thead>
           <tbody>
             {globalShops.map(s => (
               <tr key={s.id}>
                 <td style={{ fontWeight: 600 }}>{s.name}</td>
                 <td><span className="tag tag-cat">{s.region}</span></td>
-                <td style={{ fontSize: 12, color: "var(--text2)" }}>Allgemein</td>
+                <td style={{ fontSize: 12, color: "var(--text2)" }}>General</td>
                 <td><a href={s.url} target="_blank" rel="noopener" style={{ color: "var(--blue)", fontSize: 12, textDecoration: "none" }}>{s.url}</a></td>
               </tr>
             ))}
@@ -4025,11 +4418,11 @@ function ShopsTab({ shops, saveShops }) {
       {userShops.length > 0 && (
         <>
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", letterSpacing: "0.07em", marginBottom: 10 }}>
-            📍 DEINE SHOPS
+            📍 YOUR SHOPS
           </div>
           <div className="table-wrap" style={{ marginBottom: 20 }}>
             <table>
-              <thead><tr><th>Shop</th><th>Region</th><th>Spezialisierung</th><th>Website</th><th></th></tr></thead>
+              <thead><tr><th>Shop</th><th>Region</th><th>Speciality</th><th>Website</th><th></th></tr></thead>
               <tbody>
                 {userShops.map(s => (
                   <tr key={s.id}>
@@ -4049,8 +4442,8 @@ function ShopsTab({ shops, saveShops }) {
       {userShops.length === 0 && (
         <div className="empty-state">
           <div style={{ fontSize: 32, marginBottom: 8 }}>🌍</div>
-          <h3>Noch keine eigenen Shops</h3>
-          <p>Klicke auf „Shops für meine Region finden" — die KI empfiehlt passende lokale Anbieter für dein Land.</p>
+          <h3>No custom shops yet</h3>
+          <p>Click "Find shops for my region" — the AI will recommend suitable local suppliers for your country.</p>
         </div>
       )}
 
@@ -4058,14 +4451,14 @@ function ShopsTab({ shops, saveShops }) {
       {showAdd && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
           <div className="modal" style={{ width: 440 }}>
-            <div className="modal-title">➕ Shop hinzufügen</div>
-            <div className="form-row"><label>Name *</label><input value={form.name} onChange={e => set("name", e.target.value)} placeholder="z.B. Mädler, McMaster-Carr" autoFocus /></div>
-            <div className="form-row"><label>Region / Land</label><input value={form.region} onChange={e => set("region", e.target.value)} placeholder="z.B. DE, USA, JP, Global" /></div>
+            <div className="modal-title">➕ Add shop</div>
+            <div className="form-row"><label>Name *</label><input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. Mädler, McMaster-Carr" autoFocus /></div>
+            <div className="form-row"><label>Region / Country</label><input value={form.region} onChange={e => set("region", e.target.value)} placeholder="e.g. DE, USA, JP, Global" /></div>
             <div className="form-row"><label>URL</label><input value={form.url} onChange={e => set("url", e.target.value)} placeholder="https://…" /></div>
-            <div className="form-row"><label>Spezialisierung</label><input value={form.speciality} onChange={e => set("speciality", e.target.value)} placeholder="z.B. Antriebstechnik, Normteile, Elektronik" /></div>
+            <div className="form-row"><label>Speciality</label><input value={form.speciality} onChange={e => set("speciality", e.target.value)} placeholder="e.g. Drive technology, Fasteners, Electronics" /></div>
             <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setShowAdd(false)}>Abbrechen</button>
-              <button className="btn btn-primary" onClick={addShop} disabled={!form.name}>Hinzufügen</button>
+              <button className="btn btn-secondary" onClick={() => setShowAdd(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={addShop} disabled={!form.name}>Add</button>
             </div>
           </div>
         </div>
@@ -4092,12 +4485,12 @@ function RegionShopSetup({ existingShops, onAdd, onClose }) {
   const [error, setError] = useState("");
 
   const CATS = [
-    { id: "electronic", label: "Elektronik", icon: "⚡" },
-    { id: "mechanical", label: "Mechanik / Normteile", icon: "🔩" },
-    { id: "drive",      label: "Antriebe / Motoren", icon: "⚙️" },
-    { id: "pneumatic",  label: "Pneumatik / Hydraulik", icon: "💨" },
-    { id: "linear",     label: "Lineartechnik", icon: "📏" },
-    { id: "structure",  label: "Profile / Konstruktion", icon: "📐" },
+    { id: "electronic", label: "Electronics", icon: "⚡" },
+    { id: "mechanical", label: "Mechanical / Fasteners", icon: "🔩" },
+    { id: "drive",      label: "Drives / Motors", icon: "⚙️" },
+    { id: "pneumatic",  label: "Pneumatics / Hydraulics", icon: "💨" },
+    { id: "linear",     label: "Linear Motion", icon: "📏" },
+    { id: "structure",  label: "Profiles / Structure", icon: "📐" },
   ];
 
   const toggleCat = (id) => setCategories(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]);
@@ -4115,7 +4508,7 @@ function RegionShopSetup({ existingShops, onAdd, onClose }) {
       fresh.forEach(s => { sel[s.id] = true; });
       setSelected(sel);
     } catch (e) {
-      setError("Suche fehlgeschlagen: " + e.message);
+      setError("Search failed: " + e.message);
     }
     setLoading(false);
   };
@@ -4128,24 +4521,24 @@ function RegionShopSetup({ existingShops, onAdd, onClose }) {
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ width: 620 }}>
-        <div className="modal-title">🌍 Shops für deine Region finden</div>
+        <div className="modal-title">🌍 Find shops for your region</div>
 
         {!results ? (
           <>
             <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 18, lineHeight: 1.6 }}>
-              Die KI sucht die besten lokalen und regionalen Lieferanten für deinen Standort —
-              sowohl für Elektronik als auch für Mechanik, Normteile und Spezialteile.
+              The AI searches for the best local and regional suppliers for your location —
+              for electronics as well as mechanical parts, fasteners, and specialty items.
             </div>
 
             <div className="form-row">
-              <label>Dein Land / Region *</label>
+              <label>Your country / region *</label>
               <input value={country} onChange={e => setCountry(e.target.value)}
-                placeholder="z.B. Germany, USA, Japan, Australia, Brazil, India…"
+                placeholder="e.g. Germany, USA, Japan, Australia, Brazil, India…"
                 autoFocus onKeyDown={e => e.key === "Enter" && handleSearch()} />
             </div>
 
             <div className="form-row">
-              <label>Welche Bauteile kaufst du? (optional — für bessere Empfehlungen)</label>
+              <label>What parts do you buy? (optional — for better recommendations)</label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
                 {CATS.map(c => (
                   <button key={c.id} onClick={() => toggleCat(c.id)}
@@ -4159,23 +4552,23 @@ function RegionShopSetup({ existingShops, onAdd, onClose }) {
             {error && <div style={{ color: "var(--red)", fontSize: 13, marginBottom: 10 }}>⚠️ {error}</div>}
 
             <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
+              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
               <button className="btn btn-ai" disabled={loading || !country.trim()} onClick={handleSearch}>
-                {loading ? <><span className="spinner" /> Suche lokale Shops…</> : "🔍 Shops finden"}
+                {loading ? <><span className="spinner" /> Searching local shops…</> : "🔍 Find shops"}
               </button>
             </div>
           </>
         ) : (
           <>
             <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 14 }}>
-              <strong style={{ color: "var(--green)" }}>{results.length} Shops</strong> für <strong style={{ color: "var(--text)" }}>{country}</strong> gefunden.
-              Wähle die Shops die du hinzufügen möchtest:
+              <strong style={{ color: "var(--green)" }}>{results.length} shops</strong> found for <strong style={{ color: "var(--text)" }}>{country}</strong>.
+              Select the shops you want to add:
             </div>
 
             <div style={{ maxHeight: 360, overflowY: "auto", marginBottom: 16 }}>
               {results.length === 0 ? (
                 <div style={{ textAlign: "center", padding: 24, color: "var(--text3)" }}>
-                  Keine neuen Shops gefunden — alle Vorschläge sind bereits in deiner Liste.
+                  No new shops found — all suggestions are already in your list.
                 </div>
               ) : results.map(s => (
                 <div key={s.id} onClick={() => setSelected(sel => ({ ...sel, [s.id]: !sel[s.id] }))}
@@ -4195,11 +4588,11 @@ function RegionShopSetup({ existingShops, onAdd, onClose }) {
             </div>
 
             <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setResults(null)}>← Zurück</button>
+              <button className="btn btn-secondary" onClick={() => setResults(null)}>← Back</button>
               <button className="btn btn-primary"
                 disabled={Object.values(selected).filter(Boolean).length === 0}
                 onClick={handleAdd}>
-                ✅ {Object.values(selected).filter(Boolean).length} Shops hinzufügen
+                ✅ Add {Object.values(selected).filter(Boolean).length} shops
               </button>
             </div>
           </>
