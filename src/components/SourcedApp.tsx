@@ -340,28 +340,24 @@ async function callAI(messages: {role:string,content:string}[], maxTokens: numbe
   const key = apiKey ?? getApiKey();
   const provider = getProvider();
   const cfg = PROVIDERS[provider] || PROVIDERS.anthropic;
+  const endpoint = (provider === "compatible" && getCustomEndpoint()) || cfg.endpoint;
 
-  if (provider === "anthropic") {
-    const res = await fetch(cfg.endpoint, {
-      method: "POST",
-      headers: apiHeaders(key),
-      body: JSON.stringify({ model: cfg.model, max_tokens: maxTokens, messages }),
-    });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.statusText); }
-    const data = await res.json();
-    return (data.content?.filter((c:any) => c.type === "text").map((c:any) => c.text) || []).join("");
-  } else {
-    const endpoint = (provider === "compatible" && getCustomEndpoint()) || cfg.endpoint;
-    if (!endpoint) throw new Error("No endpoint URL configured");
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: openaiHeaders(key),
-      body: JSON.stringify({ model: cfg.model, max_tokens: maxTokens, messages }),
-    });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || res.statusText); }
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || "";
-  }
+  // Route through server-side proxy (avoids CORS + keeps keys safe)
+  const res = await fetch("/api/ai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages,
+      maxTokens,
+      provider,
+      model: cfg.model,
+      endpoint: provider === "compatible" ? endpoint : undefined,
+      apiKey: key || undefined, // sent only if user configured one manually
+    }),
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
+  const data = await res.json();
+  return data.text || "";
 }
 
 // ── Tavily & Nexar API Keys ───────────────────────────────────────────────────
@@ -377,16 +373,16 @@ const getNexarSecret = () => { try { return localStorage.getItem(NEXAR_SEC_STORA
 const saveNexarSecret= (k) => { try { localStorage.setItem(NEXAR_SEC_STORAGE, k); } catch {} };
 
 async function getNexarToken(): Promise<string> {
-  const id = getNexarId(); const sec = getNexarSecret();
-  if (!id || !sec) throw new Error("Nexar Client ID / Secret missing");
   const cached = (() => { try { return JSON.parse(localStorage.getItem(NEXAR_TOKEN_STORAGE) || "null"); } catch { return null; } })();
   if (cached && cached.exp > Date.now() + 60000) return cached.token;
-  const res = await fetch("https://identity.nexar.com/connect/token", {
+  // Use server-side proxy — credentials come from Vercel env vars or fall back to user's stored keys
+  const id = getNexarId(); const sec = getNexarSecret();
+  const res = await fetch("/api/nexar-token", {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "client_credentials", client_id: id, client_secret: sec }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clientId: id || undefined, clientSecret: sec || undefined }),
   });
-  if (!res.ok) { const e = await res.text(); throw new Error("Nexar token error: " + e); }
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error || "Nexar token error"); }
   const d = await res.json();
   try { localStorage.setItem(NEXAR_TOKEN_STORAGE, JSON.stringify({ token: d.access_token, exp: Date.now() + d.expires_in * 1000 })); } catch {}
   return d.access_token;
