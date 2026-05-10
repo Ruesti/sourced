@@ -87,8 +87,8 @@ const partToSb = (p, uid) => ({ id: p.id, user_id: uid, name: p.name, mpn: p.mpn
 const sbToProject = r => ({ id: r.id, name: r.name, description: r.description||"", created: r.created_at });
 const projectToSb = (p, uid) => ({ id: p.id, user_id: uid, name: p.name, description: p.description||null });
 
-const sbToBomItem = r => ({ id: r.id, projectId: r.project_id, partId: r.part_id, quantity: r.quantity, reference: r.reference||"", notes: r.notes||"", preferredSupplierId: r.preferred_supplier_id||null });
-const bomItemToSb = (b, uid) => ({ id: b.id, user_id: uid, project_id: b.projectId, part_id: b.partId, quantity: b.quantity, reference: b.reference||null, notes: b.notes||null, preferred_supplier_id: b.preferredSupplierId||null });
+const sbToBomItem = r => ({ id: r.id, projectId: r.project_id, partId: r.part_id, quantity: r.quantity, reference: r.reference||"", notes: r.notes||"", preferredSupplierId: r.preferred_supplier_id||null, preferredShopId: r.preferred_shop_id||null });
+const bomItemToSb = (b, uid) => ({ id: b.id, user_id: uid, project_id: b.projectId, part_id: b.partId, quantity: b.quantity, reference: b.reference||null, notes: b.notes||null, preferred_supplier_id: b.preferredSupplierId||null, preferred_shop_id: b.preferredShopId||null });
 
 const sbToSupplier = r => ({ id: r.id, partId: r.part_id, shopId: r.shop_id||"", shopName: r.shop_name, sku: r.sku||"", searchUrl: r.search_url||"", price: r.price ? parseFloat(r.price) : null, currency: r.currency||"EUR", notes: r.notes||"", aiGenerated: r.ai_generated||false });
 const supplierToSb = (s, uid) => ({ id: s.id, user_id: uid, part_id: s.partId, shop_id: s.shopId||null, shop_name: s.shopName, sku: s.sku||null, search_url: s.searchUrl||null, price: s.price||null, currency: s.currency||"EUR", notes: s.notes||null, ai_generated: s.aiGenerated||false });
@@ -422,17 +422,22 @@ async function nexarSearchMpn(mpn: string, name: string): Promise<{distributor:s
   return results;
 }
 
-async function tavilySearchAliExpress(query: string): Promise<{title:string,url:string,snippet:string}[]> {
+async function tavilySearch(query: string, siteFilter?: string): Promise<{title:string,url:string,snippet:string}[]> {
   const key = getTavilyKey();
   if (!key) throw new Error("Tavily API key missing");
+  const fullQuery = siteFilter ? `${query} site:${siteFilter}` : query;
   const res = await fetch("https://api.tavily.com/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ api_key: key, query: query + " site:aliexpress.com", search_depth: "basic", max_results: 5 }),
+    body: JSON.stringify({ api_key: key, query: fullQuery, search_depth: "basic", max_results: 5 }),
   });
   if (!res.ok) { const e = await res.json(); throw new Error(e.message || "Tavily error"); }
   const d = await res.json();
   return (d.results || []).map((r:any) => ({ title: r.title, url: r.url, snippet: r.content || "" }));
+}
+
+async function tavilySearchAliExpress(query: string): Promise<{title:string,url:string,snippet:string}[]> {
+  return tavilySearch(query, "aliexpress.com");
 }
 
 async function parseAliExpressResults(part: {name:string,mpn?:string}, webResults: {title:string,url:string,snippet:string}[]): Promise<{storeName:string,productUrl:string,priceEur:number|null,note:string}[]> {
@@ -1875,7 +1880,7 @@ export default function SourcedApp() {
 
         <main className="main">
           {tab === "parts"    && <PartsTab    parts={parts} saveParts={saveParts} suppliers={suppliers} saveSuppliers={saveSuppliers} shops={shops} />}
-          {tab === "bom"      && <BomTab      projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} parts={parts} suppliers={suppliers} initialProjectId={pendingBomProjectId} />}
+          {tab === "bom"      && <BomTab      projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} parts={parts} suppliers={suppliers} saveSuppliers={saveSuppliers} shops={shops} initialProjectId={pendingBomProjectId} />}
           {tab === "import"   && <ImportTab   parts={parts} saveParts={saveParts} projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} />}
           {tab === "sourcing" && <SourcingTab projects={projects} bomItems={bomItems} parts={parts} suppliers={suppliers} saveSuppliers={saveSuppliers} />}
           {tab === "shops"    && <ShopsTab    shops={shops} saveShops={saveShops} />}
@@ -2432,91 +2437,88 @@ Antworte NUR mit JSON:
 }
 
 // ── Supplier Dropdown Component ───────────────────────────────────────────────
-function SupplierDropdown({ item, part, suppliers, onSelect }) {
-  const [suggesting, setSuggesting] = useState(false);
-  const [suggestion, setSuggestion] = useState(null);
-  const [showTip, setShowTip] = useState(false);
-  const preferred = suppliers.find(s => s.id === item.preferredSupplierId);
-
-  const handleSuggest = async (e) => {
-    e.stopPropagation();
-    if (!part || suppliers.length === 0) return;
-    setSuggesting(true); setSuggestion(null);
-    try {
-      const result = await suggestBestSupplier(part, suppliers);
-      setSuggestion(result);
-      // Auto-select if we find a match
-      const match = suppliers.find(s => s.shopName?.toLowerCase().includes(result.recommendedShopName?.toLowerCase()) || result.recommendedShopName?.toLowerCase().includes(s.shopName?.toLowerCase()));
-      if (match) onSelect(match.id);
-      setShowTip(true);
-    } catch {}
-    setSuggesting(false);
-  };
+function SupplierDropdown({ item, part, suppliers, shops, onSelectShop }) {
+  const [customMode, setCustomMode] = useState(false);
+  const [customName, setCustomName] = useState("");
 
   if (!part) return <span style={{ color: "var(--text3)", fontSize: 12 }}>—</span>;
 
+  const shopId = item.preferredShopId || null;
+  const isAli = shopId === "aliexpress";
+  const isCustom = shopId?.startsWith("custom:");
+  const customLabel = isCustom ? shopId.replace(/^custom:/, "") : "";
+  const hasSelection = !!shopId;
+
+  const matchedSupplier = suppliers.find(s => {
+    if (s.partId !== part.id) return false;
+    if (isAli) return s.shopName?.toLowerCase().includes("aliexpress");
+    if (isCustom) return s.shopName?.toLowerCase() === customLabel.toLowerCase();
+    const shop = shops.find(sh => sh.id === shopId);
+    return s.shopId === shopId || s.shopName?.toLowerCase() === shop?.name?.toLowerCase();
+  });
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {!customMode ? (
         <select
-          value={item.preferredSupplierId || ""}
-          onChange={e => { onSelect(e.target.value || null); setSuggestion(null); setShowTip(false); }}
+          value={shopId || ""}
+          onChange={e => {
+            const val = e.target.value;
+            if (val === "_custom_") { setCustomMode(true); setCustomName(""); }
+            else onSelectShop(val || null);
+          }}
           style={{
-            flex: 1,
-            background: preferred ? "rgba(57,211,83,0.08)" : "var(--bg3)",
-            border: `1px solid ${preferred ? "rgba(57,211,83,0.35)" : "var(--border)"}`,
-            color: preferred ? "var(--text)" : "var(--text3)",
+            width: "100%",
+            background: hasSelection ? "rgba(57,211,83,0.08)" : "var(--bg3)",
+            border: `1px solid ${hasSelection ? "rgba(57,211,83,0.35)" : "var(--border)"}`,
+            color: hasSelection ? "var(--text)" : "var(--text3)",
             padding: "4px 7px",
             borderRadius: 5,
             fontSize: 12,
             fontFamily: "IBM Plex Sans",
             cursor: "pointer",
-            minWidth: 0,
           }}
         >
-          <option value="">— Select shop —</option>
-          {suppliers.map(s => (
-            <option key={s.id} value={s.id}>
-              {s.shopName}{s.price ? ` · ${s.price.toFixed(2)}€` : ""}
-            </option>
-          ))}
-          {suppliers.length === 0 && <option disabled>No suppliers added</option>}
-        </select>
-
-        {/* AI suggest button */}
-        {suppliers.length > 1 && (
-          <button
-            title="AI recommendation"
-            onClick={handleSuggest}
-            disabled={suggesting}
-            style={{ background: "rgba(88,166,255,0.1)", border: "1px solid rgba(88,166,255,0.25)", borderRadius: 5, padding: "4px 7px", cursor: "pointer", color: "var(--blue)", fontSize: 13, lineHeight: 1, flexShrink: 0 }}
-          >
-            {suggesting ? <span className="spinner" style={{ width: 11, height: 11, borderWidth: 1.5 }} /> : "✨"}
-          </button>
-        )}
-
-        {/* No suppliers → suggest adding */}
-        {suppliers.length === 0 && (
-          <span style={{ fontSize: 11, color: "var(--text3)", whiteSpace: "nowrap" }}>Add a supplier first</span>
-        )}
-      </div>
-
-      {/* Suggestion tooltip */}
-      {showTip && suggestion && (
-        <div style={{ background: "rgba(88,166,255,0.07)", border: "1px solid rgba(88,166,255,0.2)", borderRadius: 5, padding: "5px 8px", fontSize: 11, color: "var(--text2)", lineHeight: 1.5 }}>
-          <span style={{ color: "var(--blue)" }}>✨ {suggestion.recommendedShopName}</span> — {suggestion.reason}
-          {suggestion.warning && (
-            <div style={{ color: "var(--orange)", marginTop: 2 }}>⚠️ {suggestion.warning}</div>
+          <option value="">— No preference —</option>
+          {shops.length > 0 && (
+            <optgroup label="My shops">
+              {shops.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </optgroup>
           )}
-          <button onClick={() => setShowTip(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", float: "right", fontSize: 12, lineHeight: 1 }}>×</button>
-        </div>
+          <optgroup label="Other">
+            <option value="aliexpress">AliExpress</option>
+            <option value="_custom_">Custom shop…</option>
+          </optgroup>
+          {isCustom && <option value={shopId}>{customLabel}</option>}
+        </select>
+      ) : (
+        <input
+          autoFocus
+          value={customName}
+          onChange={e => setCustomName(e.target.value)}
+          placeholder="Shop name or URL…"
+          onKeyDown={e => {
+            if (e.key === "Enter" && customName.trim()) { onSelectShop(`custom:${customName.trim()}`); setCustomMode(false); }
+            if (e.key === "Escape") { setCustomMode(false); }
+          }}
+          onBlur={() => { if (customName.trim()) onSelectShop(`custom:${customName.trim()}`); setCustomMode(false); }}
+          style={{ width: "100%", background: "var(--bg3)", border: "1px solid var(--border2)", color: "var(--text)", padding: "4px 7px", borderRadius: 5, fontSize: 12, fontFamily: "IBM Plex Sans" }}
+        />
+      )}
+      {hasSelection && matchedSupplier?.price && (
+        <div style={{ fontSize: 10, color: "var(--green)" }}>✓ {matchedSupplier.price.toFixed(2)} €{matchedSupplier.sku ? ` · ${matchedSupplier.sku}` : ""}</div>
+      )}
+      {hasSelection && !matchedSupplier && (
+        <div style={{ fontSize: 10, color: "var(--text3)" }}>No price yet — use 🔍 Search</div>
       )}
     </div>
   );
 }
 
 // ── BOM Tab ───────────────────────────────────────────────────────────────────
-function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers, initialProjectId = null }) {
+function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers, saveSuppliers, shops, initialProjectId = null }) {
   const [activeProject, setActiveProject] = useState(null);
 
   useEffect(() => {
@@ -2530,6 +2532,8 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers, i
   const [showAddPart, setShowAddPart] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [showCart, setShowCart] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [searchProgress, setSearchProgress] = useState<{done:number,total:number,current:string}|null>(null);
 
   const projectBom = bomItems.filter(b => b.projectId === activeProject?.id);
 
@@ -2583,12 +2587,80 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers, i
     a.click();
   };
 
+  const getPreferredSupplier = (item, sups) => {
+    if (item.preferredShopId) {
+      const shopId = item.preferredShopId;
+      const isAli = shopId === "aliexpress";
+      const isCustom = shopId?.startsWith("custom:");
+      const customLabel = isCustom ? shopId.replace(/^custom:/, "") : "";
+      const shop = shops.find(s => s.id === shopId);
+      return sups.find(s => {
+        if (isAli) return s.shopName?.toLowerCase().includes("aliexpress");
+        if (isCustom) return s.shopName?.toLowerCase() === customLabel.toLowerCase();
+        return s.shopId === shopId || s.shopName?.toLowerCase() === shop?.name?.toLowerCase();
+      }) || null;
+    }
+    return sups.find(s => s.id === item.preferredSupplierId) || null;
+  };
+
   const totalCost = projectBom.reduce((sum, item) => {
     const sups = suppliers.filter(s => s.partId === item.partId);
-    const preferred = sups.find(s => s.id === item.preferredSupplierId);
+    const preferred = getPreferredSupplier(item, sups);
     const price = preferred?.price || sups.reduce((m, s) => s.price && s.price < m ? s.price : m, Infinity);
     return sum + (price < Infinity ? price * item.quantity : 0);
   }, 0);
+
+  const searchPrices = async () => {
+    const itemsToSearch = projectBom.filter(b => b.preferredShopId);
+    if (!itemsToSearch.length) { alert("Set a preferred shop for at least one part first."); return; }
+    const hasNexar = !!getNexarId() && !!getNexarSecret();
+    const hasTavily = !!getTavilyKey();
+    if (!hasNexar && !hasTavily) { alert("Add Nexar or Tavily API keys under 🔑 API Key to enable live price search."); return; }
+    setSearching(true);
+    const updatedSuppliers = [...suppliers];
+    for (let i = 0; i < itemsToSearch.length; i++) {
+      const item = itemsToSearch[i];
+      const part = parts.find(p => p.id === item.partId);
+      if (!part) continue;
+      setSearchProgress({ done: i, total: itemsToSearch.length, current: part.name });
+      const shopId = item.preferredShopId;
+      const isAli = shopId === "aliexpress";
+      const isCustom = shopId?.startsWith("custom:");
+      const customLabel = isCustom ? shopId.replace(/^custom:/, "") : "";
+      const shop = shops.find(s => s.id === shopId);
+      const shopName = isAli ? "AliExpress" : isCustom ? customLabel : (shop?.name || shopId);
+      const shopUrl = shop?.url || "";
+      try {
+        // Nexar for non-AliExpress if available
+        if (!isAli && hasNexar && part.mpn) {
+          const offers = await nexarSearchMpn(part.mpn, part.name);
+          const match = offers.find(o => shopName && o.distributor?.toLowerCase().includes(shopName.toLowerCase())) || offers[0];
+          if (match) {
+            const idx = updatedSuppliers.findIndex(s => s.partId === part.id && (s.shopId === shopId || s.shopName?.toLowerCase() === match.distributor?.toLowerCase()));
+            const entry = { id: idx >= 0 ? updatedSuppliers[idx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId, shopName: match.distributor, sku: match.sku, price: match.price, currency: match.currency, ai_generated: false, searchUrl: match.url };
+            if (idx >= 0) updatedSuppliers[idx] = entry; else updatedSuppliers.push(entry);
+          }
+        } else if ((isAli || !hasNexar) && hasTavily) {
+          // Tavily search
+          const query = [part.mpn, part.name].filter(Boolean).join(" ");
+          const domain = isAli ? "aliexpress.com" : (shopUrl ? new URL(shopUrl).hostname.replace(/^www\./, "") : null);
+          const results = await tavilySearch(query, domain || undefined);
+          if (results.length) {
+            const parsed = await parseAliExpressResults(part, results);
+            if (parsed.length) {
+              const s = parsed[0];
+              const idx = updatedSuppliers.findIndex(sup => sup.partId === part.id && (sup.shopId === shopId || (isAli && sup.shopName?.toLowerCase().includes("aliexpress"))));
+              const entry = { id: idx >= 0 ? updatedSuppliers[idx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId, shopName: s.storeName || shopName, sku: "", price: s.priceEur, currency: "EUR", ai_generated: false, searchUrl: s.productUrl };
+              if (idx >= 0) updatedSuppliers[idx] = entry; else updatedSuppliers.push(entry);
+            }
+          }
+        }
+      } catch {}
+    }
+    saveSuppliers(updatedSuppliers);
+    setSearching(false);
+    setSearchProgress(null);
+  };
 
   return (
     <div>
@@ -2652,6 +2724,16 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers, i
                   {totalCost > 0 && <span className="price-tag" style={{ fontSize: 13 }}>∑ ~{totalCost.toFixed(2)} €</span>}
                   <button className="export-btn" onClick={exportCSV}>⬇ CSV</button>
                   <button className="export-btn" style={{ color: "var(--orange)", borderColor: "rgba(210,153,34,0.3)" }} onClick={() => setShowCart(true)}>🛒 Cart</button>
+                  <button
+                    className="btn btn-ai btn-sm"
+                    onClick={searchPrices}
+                    disabled={searching}
+                    title="Search prices for parts with a preferred shop"
+                  >
+                    {searching
+                      ? <><span className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5, marginRight: 4 }} />{searchProgress ? `${searchProgress.done}/${searchProgress.total} ${searchProgress.current}` : "Searching…"}</>
+                      : "🔍 Search prices"}
+                  </button>
                   <button className="btn btn-primary btn-sm" onClick={() => setShowAddPart(true)}>+ Part</button>
                 </div>
               </div>
@@ -2679,7 +2761,7 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers, i
                       {projectBom.map(item => {
                         const part = parts.find(p => p.id === item.partId);
                         const sups = suppliers.filter(s => s.partId === item.partId);
-                        const preferred = sups.find(s => s.id === item.preferredSupplierId) || null;
+                        const preferred = getPreferredSupplier(item, sups);
                         const prefPrice = preferred?.price;
                         return (
                           <tr key={item.id}>
@@ -2695,7 +2777,8 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, suppliers, i
                                 item={item}
                                 part={part}
                                 suppliers={sups}
-                                onSelect={(supId) => saveBom(bomItems.map(b => b.id === item.id ? { ...b, preferredSupplierId: supId } : b))}
+                                shops={shops}
+                                onSelectShop={(shopId) => saveBom(bomItems.map(b => b.id === item.id ? { ...b, preferredShopId: shopId } : b))}
                               />
                             </td>
                             <td>
