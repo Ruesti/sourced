@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "postinstall": "node scripts/postinstall.js",
-    "dev": "NODE_OPTIONS=--openssl-legacy-provider next dev",
-    "build": "rm -rf .next/cache && NODE_OPTIONS=--openssl-legacy-provider next build",
+    "dev": "node scripts/postinstall.js && NODE_OPTIONS=--openssl-legacy-provider next dev",
+    "build": "node scripts/postinstall.js && rm -rf .next/cache && NODE_OPTIONS=--openssl-legacy-provider next build",
     "start": "NODE_OPTIONS=--openssl-legacy-provider next start",
     "lint": "eslint"
   },

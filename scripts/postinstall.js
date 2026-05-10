@@ -113,7 +113,36 @@ if (hg.includes(wrapDepBlock)) {
   hgChanged = true;
 }
 
+// 6. Fix _regeneratorAsync to use a proper loop that passes the resume value.
+//    The original: a.next().then(n => n.done ? n.value : a.next())
+//    calls a.next() a second time WITHOUT the value when done=false,
+//    so _context.v is undefined at the next case.
+//    The loop passes n.value back so the state machine resumes correctly.
+//    AST-safe: body.0.body.body.0 is still `var a=asyncGen(...)` so the
+//    asyncGen dependency path is unchanged.
+const regenAsyncOld = '"function _regeneratorAsync(n,e,r,t,o){var a=asyncGen(n,e,r,t,o);return a.next().then(function(n){return n.done?n.value:a.next()})}"';
+const regenAsyncNew = '"function _regeneratorAsync(n,e,r,t,o){var a=asyncGen(n,e,r,t,o);function s(v){return a.next(v).then(function(n){return n.done?n.value:s(n.value)})}return s()}"';
+if (hg.includes(regenAsyncOld)) {
+  hg = hg.replace(regenAsyncOld, regenAsyncNew);
+  hgChanged = true;
+}
+
 if (hgChanged) {
   fs.writeFileSync(helpersGen, hg);
-  console.log("patched: @babel/helpers helpers-generated.js — duck-type OverloadYield checks");
+  console.log("patched: @babel/helpers helpers-generated.js — duck-type OverloadYield checks + _regeneratorAsync loop");
 }
+
+// Verify all helpers-generated.js patches are in place (catches stale node_modules cache)
+const hgVerify = fs.readFileSync(helpersGen, "utf8");
+const hgProblems = [];
+if (hgVerify.includes("u instanceof OverloadYield?"))
+  hgProblems.push("regeneratorAsyncIterator still has instanceof check");
+if (hgVerify.includes("u=o instanceof OverloadYield"))
+  hgProblems.push("wrapAsyncGenerator still has instanceof check");
+if (hgVerify.includes('return a.next().then(function(n){return n.done?n.value:a.next()})'))
+  hgProblems.push("_regeneratorAsync still uses non-loop pattern");
+if (hgProblems.length) {
+  console.error("PATCH FAILED — helpers-generated.js:\n  " + hgProblems.join("\n  "));
+  process.exit(1);
+}
+console.log("verified: @babel/helpers helpers-generated.js patches OK");
