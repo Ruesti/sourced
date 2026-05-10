@@ -281,7 +281,7 @@ Do NOT include AliExpress, Mouser, DigiKey, LCSC, Misumi, RS Components — alre
     method: "POST",
     headers: apiHeaders(apiKey),
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
     }),
@@ -341,7 +341,7 @@ Wenn du eine SKU nicht kennst, schreib "suchen". Gib 2-4 realistische Einträge.
     method: "POST",
     headers: apiHeaders(apiKey),
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 1000,
       messages: [{ role: "user", content: prompt }],
     }),
@@ -398,7 +398,7 @@ ${rawText.slice(0, 8000)}
     method: "POST",
     headers: apiHeaders(apiKey),
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     }),
@@ -1218,7 +1218,7 @@ function OnboardingScreen({ onDone }) {
         method: "POST",
         headers: apiHeaders(key.trim()),
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6",
           max_tokens: 10,
           messages: [{ role: "user", content: "Hi" }],
         }),
@@ -1348,7 +1348,7 @@ function ApiKeyModal({ onClose }) {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: apiHeaders(key.trim()),
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 10, messages: [{ role: "user", content: "Hi" }] }),
+        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 10, messages: [{ role: "user", content: "Hi" }] }),
       });
       if (res.ok) { saveApiKey(key.trim()); setResult("ok"); setTimeout(onClose, 700); }
       else { const e = await res.json(); setResult("error:" + (e.error?.message || "Fehler")); }
@@ -2086,7 +2086,7 @@ Antworte NUR mit JSON:
     method: "POST",
     headers: apiHeaders(getApiKey()),
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 300,
       messages: [{ role: "user", content: prompt }],
     }),
@@ -3613,7 +3613,7 @@ Falls kein direkter Treffer: gib ähnliche Alternativen. Schätze Preise realist
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6",
           max_tokens: 1000,
           tools: [{ type: "web_search_20250305", name: "web_search" }],
           messages: [{ role: "user", content: prompt }],
@@ -3700,7 +3700,7 @@ Antworte NUR mit einem JSON-Objekt, kein Markdown, kein Text davor oder danach:
           method: "POST",
           headers: apiHeaders(getApiKey()),
           body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
+            model: "claude-sonnet-4-6",
             max_tokens: 1200,
             tools: [{ type: "web_search_20250305", name: "web_search" }],
             messages: [{ role: "user", content: prompt }],
