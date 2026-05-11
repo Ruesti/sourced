@@ -7,20 +7,27 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 // ── Supabase Client — credentials fetched at runtime from /api/config ────────
 let _sbClient: any = null;
-let _sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-let _sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+let _sbUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+let _sbKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
+let _sbConfigPromise: Promise<void> | null = null;
 
-async function loadSbConfig() {
-  if (_sbUrl && _sbKey) return; // already have them (build-time vars)
-  try {
-    const r = await fetch("/api/config");
-    if (r.ok) { const d = await r.json(); _sbUrl = d.supabaseUrl || ""; _sbKey = d.supabaseAnonKey || ""; }
-  } catch {}
+function loadSbConfig(): Promise<void> {
+  if (_sbUrl && _sbKey) return Promise.resolve();
+  if (_sbConfigPromise) return _sbConfigPromise; // singleton — fetch only once
+  _sbConfigPromise = fetch("/api/config")
+    .then(r => r.ok ? r.json() : {})
+    .then(d => {
+      _sbUrl = (d.supabaseUrl || "").trim();
+      _sbKey = (d.supabaseAnonKey || "").trim();
+    })
+    .catch(() => {});
+  return _sbConfigPromise;
 }
 
 async function getSb() {
   await loadSbConfig();
   if (!_sbUrl || !_sbKey) return null;
+  try { new URL(_sbUrl); } catch { return null; } // validate URL format
   if (_sbClient) return _sbClient;
   if (!window.supabase) {
     await new Promise((res, rej) => {
@@ -34,7 +41,7 @@ async function getSb() {
   return _sbClient;
 }
 
-function resetSbClient() { _sbClient = null; }
+function resetSbClient() { _sbClient = null; _sbConfigPromise = null; }
 
 // ── Smart Storage — localStorage lokal, Supabase wenn eingeloggt ──────────────
 const STORAGE_KEYS = {

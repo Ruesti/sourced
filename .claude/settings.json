@@ -12,7 +12,8 @@
       "Read(//home/uli/Projects/**)",
       "Bash(npx tsc *)",
       "Bash(grep -v \"^$\")",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(git -C /home/uli/Projects/sourced commit -m ' *)"
     ],
     "additionalDirectories": [
       "/home/uli/.claude/projects/-home-uli-Projects-sourced"
