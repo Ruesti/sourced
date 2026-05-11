@@ -5,14 +5,22 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 
-// ── Supabase Client — zentral gehostet, kein User-Setup nötig ────────────────
-// Deine Supabase-Credentials hier eintragen:
-const SUPABASE_URL      = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
+// ── Supabase Client — credentials fetched at runtime from /api/config ────────
 let _sbClient: any = null;
+let _sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+let _sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
+async function loadSbConfig() {
+  if (_sbUrl && _sbKey) return; // already have them (build-time vars)
+  try {
+    const r = await fetch("/api/config");
+    if (r.ok) { const d = await r.json(); _sbUrl = d.supabaseUrl || ""; _sbKey = d.supabaseAnonKey || ""; }
+  } catch {}
+}
+
 async function getSb() {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  await loadSbConfig();
+  if (!_sbUrl || !_sbKey) return null;
   if (_sbClient) return _sbClient;
   if (!window.supabase) {
     await new Promise((res, rej) => {
@@ -22,7 +30,7 @@ async function getSb() {
       document.head.appendChild(s);
     });
   }
-  _sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  _sbClient = window.supabase.createClient(_sbUrl, _sbKey);
   return _sbClient;
 }
 
