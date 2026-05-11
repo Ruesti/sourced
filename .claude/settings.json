@@ -13,7 +13,10 @@
       "Bash(npx tsc *)",
       "Bash(grep -v \"^$\")",
       "Bash(git rm *)",
-      "Bash(git -C /home/uli/Projects/sourced commit -m ' *)"
+      "Bash(git -C /home/uli/Projects/sourced commit -m ' *)",
+      "Bash(vercel inspect *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d.get\\('alias',''\\)\\)\")",
+      "Bash(vercel alias *)"
     ],
     "additionalDirectories": [
       "/home/uli/.claude/projects/-home-uli-Projects-sourced"

@@ -1790,7 +1790,12 @@ export default function SourcedApp() {
         }
       }
       setLoaded(true);
-      if (!getApiKey()) setShowOnboarding(true);
+      if (!getApiKey()) {
+        // Skip onboarding if server already has an AI key configured
+        const serverHasAI = await fetch("/api/config").then(r => r.ok ? r.json() : {}).then(d => !!d.hasServerAI).catch(() => false);
+        if (!serverHasAI) setShowOnboarding(true);
+        else setApiKeySet(true); // server key counts as "key set"
+      }
     })().catch(() => setLoaded(true));
   }, []);
 
