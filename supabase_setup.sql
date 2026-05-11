@@ -1,29 +1,28 @@
 -- Sourced — BOM & Parts Manager
--- Run this in your Supabase project: Dashboard → SQL Editor → New query → paste → Run
--- Tables use user_id = auth.uid() for row-level security.
+-- Run in Supabase: Dashboard → SQL Editor → New query → paste → Run
+-- Safe to run multiple times (IF NOT EXISTS).
 
 -- ── Parts ──────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS bm_parts (
-  id          text        PRIMARY KEY,
-  user_id     uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  name        text        NOT NULL,
-  mpn         text,
+  id           text        PRIMARY KEY,
+  user_id      uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name         text        NOT NULL,
+  mpn          text,
   manufacturer text,
-  category    text,
-  footprint   text,
-  description text,
-  notes       text,
-  datasheet   text,
-  drawer      text,
-  stock       integer     NOT NULL DEFAULT 0,
-  stock_min   integer     NOT NULL DEFAULT 0,
-  created_at  timestamptz NOT NULL DEFAULT now()
+  category     text,
+  footprint    text,
+  description  text,
+  notes        text,
+  datasheet    text,
+  drawer       text,
+  stock        integer     NOT NULL DEFAULT 0,
+  stock_min    integer     NOT NULL DEFAULT 0,
+  created_at   timestamptz NOT NULL DEFAULT now()
 );
-
 ALTER TABLE bm_parts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "users own their parts" ON bm_parts;
 CREATE POLICY "users own their parts" ON bm_parts
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
 -- ── Projects ───────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS bm_projects (
@@ -33,11 +32,10 @@ CREATE TABLE IF NOT EXISTS bm_projects (
   description text,
   created_at  timestamptz NOT NULL DEFAULT now()
 );
-
 ALTER TABLE bm_projects ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "users own their projects" ON bm_projects;
 CREATE POLICY "users own their projects" ON bm_projects
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
 -- ── BOM Items ──────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS bm_bom_items (
@@ -52,11 +50,10 @@ CREATE TABLE IF NOT EXISTS bm_bom_items (
   preferred_shop_id     text,
   created_at            timestamptz NOT NULL DEFAULT now()
 );
-
 ALTER TABLE bm_bom_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "users own their bom items" ON bm_bom_items;
 CREATE POLICY "users own their bom items" ON bm_bom_items
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
 -- ── Suppliers (price data per part per shop) ────────────────────────────────────
 CREATE TABLE IF NOT EXISTS bm_suppliers (
@@ -71,13 +68,13 @@ CREATE TABLE IF NOT EXISTS bm_suppliers (
   currency     text        NOT NULL DEFAULT 'EUR',
   notes        text,
   ai_generated boolean     NOT NULL DEFAULT false,
+  pack_qty     integer     NOT NULL DEFAULT 1,
   created_at   timestamptz NOT NULL DEFAULT now()
 );
-
 ALTER TABLE bm_suppliers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "users own their suppliers" ON bm_suppliers;
 CREATE POLICY "users own their suppliers" ON bm_suppliers
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
 -- ── Shops ──────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS bm_shops (
@@ -88,8 +85,7 @@ CREATE TABLE IF NOT EXISTS bm_shops (
   url        text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-
 ALTER TABLE bm_shops ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "users own their shops" ON bm_shops;
 CREATE POLICY "users own their shops" ON bm_shops
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
