@@ -5,39 +5,53 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 
-// ── Supabase Client — credentials fetched at runtime from /api/config ────────
+// ── Supabase — auth via /api/supabase-auth, data via JS client ───────────────
+const SESS_STORAGE = "partsdb-sb-session";
 let _sbClient: any = null;
-let _sbUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
-let _sbKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
+let _sbUrl = "";
+let _sbKey = "";
 let _sbConfigPromise: Promise<void> | null = null;
+
+// Strip non-ASCII-printable chars that would break HTTP headers
+const sanitize = (s: string) => s.trim().replace(/[^\x20-\x7E]/g, "");
 
 function loadSbConfig(): Promise<void> {
   if (_sbUrl && _sbKey) return Promise.resolve();
-  if (_sbConfigPromise) return _sbConfigPromise; // singleton — fetch only once
+  if (_sbConfigPromise) return _sbConfigPromise;
   _sbConfigPromise = fetch("/api/config")
     .then(r => r.ok ? r.json() : {})
-    .then(d => {
-      _sbUrl = (d.supabaseUrl || "").trim();
-      _sbKey = (d.supabaseAnonKey || "").trim();
-    })
+    .then(d => { _sbUrl = sanitize(d.supabaseUrl || ""); _sbKey = sanitize(d.supabaseAnonKey || ""); })
     .catch(() => {});
   return _sbConfigPromise;
 }
 
+// Server-side auth helpers
+async function sbAuth(action: string, payload: object = {}): Promise<any> {
+  const r = await fetch("/api/supabase-auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...payload }) });
+  return r.json();
+}
+
+function getSbSession() { try { return JSON.parse(localStorage.getItem(SESS_STORAGE) || "null"); } catch { return null; } }
+function setSbSession(s: any) { try { if (s) localStorage.setItem(SESS_STORAGE, JSON.stringify(s)); else localStorage.removeItem(SESS_STORAGE); } catch {} }
+
 async function getSb() {
   await loadSbConfig();
   if (!_sbUrl || !_sbKey) return null;
-  try { new URL(_sbUrl); } catch { return null; } // validate URL format
+  try { new URL(_sbUrl); } catch { return null; }
   if (_sbClient) return _sbClient;
   if (!window.supabase) {
     await new Promise((res, rej) => {
       const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js";
+      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js";
       s.onload = res; s.onerror = rej;
       document.head.appendChild(s);
     });
   }
-  _sbClient = window.supabase.createClient(_sbUrl, _sbKey);
+  // Use session access token so data queries are authenticated
+  const session = getSbSession();
+  _sbClient = window.supabase.createClient(_sbUrl, _sbKey, {
+    global: { headers: session?.access_token ? { "Authorization": `Bearer ${session.access_token}` } : {} }
+  });
   return _sbClient;
 }
 
@@ -1243,19 +1257,19 @@ function AuthModal({ onClose, onLoggedIn }) {
 
   const handle = async () => {
     setLoading(true); setErr(""); setMsg(null);
-    const sb = await getSb();
-    if (!sb) { setErr("No Supabase connection. Please configure it in Settings first."); setLoading(false); return; }
     try {
       if (tab === "register") {
-        const { error } = await sb.auth.signUp({ email, password });
-        if (error) throw error;
+        const d = await sbAuth("signup", { email, password });
+        if (d.error) throw new Error(d.error);
         setMsg("Confirmation email sent! Please confirm your email then sign in.");
       } else {
-        const { data, error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        onLoggedIn(data.user);
+        const d = await sbAuth("signin", { email, password });
+        if (d.error) throw new Error(d.error);
+        setSbSession(d.session);
+        resetSbClient(); // rebuild client with new access token
+        onLoggedIn(d.user);
       }
-    } catch (e) {
+    } catch (e: any) {
       setErr(e.message);
     }
     setLoading(false);
@@ -1766,9 +1780,12 @@ export default function SourcedApp() {
     (async () => {
       let cloudUser = null;
       try {
-        const sb = await getSb();
-        const { data } = await sb?.auth.getUser() || {};
-        cloudUser = data?.user || null;
+        const session = getSbSession();
+        if (session?.access_token) {
+          const d = await sbAuth("getuser", { accessToken: session.access_token });
+          cloudUser = d?.user || null;
+          if (!cloudUser) setSbSession(null); // expired session
+        }
       } catch {}
       // Always load localStorage first — this is the guaranteed local copy
       const [lp, lpr, lb, ls, lsh] = await Promise.all([
@@ -1841,7 +1858,11 @@ export default function SourcedApp() {
     }
   };
 
-  const handleLogout = async () => { const sb = await getSb(); await sb?.auth.signOut(); setUser(null); setSyncState("offline"); };
+  const handleLogout = async () => {
+    const session = getSbSession();
+    if (session?.access_token) sbAuth("signout", { accessToken: session.access_token }).catch(() => {});
+    setSbSession(null); resetSbClient(); setUser(null); setSyncState("offline");
+  };
 
   const handleMigrationDone = async () => {
     setShowMigration(false); setSyncState("syncing");
