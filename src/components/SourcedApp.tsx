@@ -2684,69 +2684,67 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
   const searchPrices = async () => {
     const allItems = projectBom.filter(b => b.partId);
     if (!allItems.length) return;
-    const hasNexar = !!getNexarId() && !!getNexarSecret();
-    const serverHasTavily = await fetch("/api/config").then(r => r.ok ? r.json() : {}).then(d => !!d.hasServerTavily).catch(() => false);
-    const hasTavily = !!getTavilyKey() || serverHasTavily;
-    if (!hasNexar && !hasTavily) { alert("Add Nexar or Tavily API keys under 🔑 API Key to enable live price search."); return; }
+    if (!getApiKey()) { alert("KI-API-Key erforderlich. Unter 🔑 API Key eintragen."); return; }
+
     setSearching(true);
-    const updatedSuppliers = [...suppliers];
-    const bomShopUpdates: Record<string, string> = {};
-    for (let i = 0; i < allItems.length; i++) {
-      const item = allItems[i];
-      const part = parts.find(p => p.id === item.partId);
-      if (!part) continue;
-      setSearchProgress({ done: i, total: allItems.length, current: part.name });
+    setSearchProgress({ done: 0, total: allItems.length, current: "Analysiere BOM…" });
 
-      let shopId = item.preferredShopId;
+    try {
+      const partsForAI = allItems.map((item, i) => {
+        const part = parts.find(p => p.id === item.partId);
+        if (!part) return null;
+        const fields = [part.name, part.mpn ? `MPN: ${part.mpn}` : null, part.manufacturer ? `Hersteller: ${part.manufacturer}` : null, part.value ? `Wert: ${part.value}` : null, part.footprint ? `Gehäuse: ${part.footprint}` : null, `Menge: ${item.quantity}`].filter(Boolean).join(" | ");
+        return `${i + 1}. ${fields}`;
+      }).filter(Boolean).join("\n");
 
-      // If no preferred shop: use first shop from list, or AliExpress as last resort
-      if (!shopId) {
-        if (hasNexar && shops.length > 0) shopId = shops[0].id;
-        else if (hasTavily) shopId = "aliexpress";
-        else continue;
+      const shopList = shops.length > 0
+        ? shops.map(s => `${s.name}${s.region ? ` (${s.region})` : ""}${s.url ? ` – ${s.url}` : ""}`).join("\n")
+        : "Reichelt (DE)\nMouser (DE)\nConrad (DE)\nLCSC (global)\nAliExpress (global)";
+
+      const prompt = `Du bist ein Elektronik-Einkaufsexperte. Finde für jedes Bauteil dieser Stückliste den besten Lieferanten aus der Shop-Liste und schätze den Einzelstückpreis (nicht Pack-Preis) für Kleinserie (1–10 Stück).
+
+Shops (bevorzuge diese):
+${shopList}
+
+Stückliste:
+${partsForAI}
+
+Regeln:
+- Standard-Passives (Widerstände, Kondensatoren, Spulen): LCSC oder AliExpress ok
+- ICs, MCUs, Halbleiter: Reichelt, Mouser, DigiKey, LCSC bevorzugen
+- Wenn MPN bekannt: nutze sie für SKU und direkte Produkt-URL
+- Schätze realistische Preise aus Trainingswissen
+- Unbekanntes/nicht bestellbares Bauteil: shopName null
+
+Antworte NUR mit JSON-Array, ein Objekt pro Bauteil, exakt gleiche Reihenfolge wie die Stückliste:
+[{"i":1,"shopName":"Reichelt","sku":"ATMEGA 328P-PU","url":"https://www.reichelt.de/...","price":2.50,"currency":"EUR"},{"i":2,"shopName":null,"sku":null,"url":null,"price":null,"currency":"EUR"}]`;
+
+      const text = await callAI([{ role: "user", content: prompt }], 4000);
+      const match = text.replace(/```json|```/g, "").match(/\[[\s\S]*\]/);
+      const results: {i:number,shopName:string|null,sku:string|null,url:string|null,price:number|null,currency:string}[] = match ? JSON.parse(match[0]) : [];
+
+      const updatedSuppliers = [...suppliers];
+      const bomShopUpdates: Record<string, string> = {};
+
+      for (const res of results) {
+        const idx = (res.i || 0) - 1;
+        if (idx < 0 || idx >= allItems.length || !res.shopName || !res.price) continue;
+        const item = allItems[idx];
+        const part = parts.find(p => p.id === item.partId);
+        if (!part) continue;
+        setSearchProgress({ done: idx + 1, total: allItems.length, current: part.name });
+        const matchedShop = shops.find(s => s.name?.toLowerCase() === res.shopName!.toLowerCase() || s.name?.toLowerCase().includes(res.shopName!.toLowerCase()) || res.shopName!.toLowerCase().includes(s.name?.toLowerCase()));
+        const shopId = matchedShop?.id || (res.shopName.toLowerCase().includes("aliexpress") ? "aliexpress" : `custom:${res.shopName}`);
+        const existingIdx = updatedSuppliers.findIndex(s => s.partId === part.id && (s.shopId === shopId || s.shopName?.toLowerCase() === res.shopName!.toLowerCase()));
+        const entry = { id: existingIdx >= 0 ? updatedSuppliers[existingIdx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId, shopName: matchedShop?.name || res.shopName, sku: res.sku || "", price: res.price, currency: res.currency || "EUR", ai_generated: true, searchUrl: res.url || "", packQty: 1 };
+        if (existingIdx >= 0) updatedSuppliers[existingIdx] = entry; else updatedSuppliers.push(entry);
+        if (!item.preferredShopId) bomShopUpdates[item.id] = shopId;
       }
 
-      const isAli = shopId === "aliexpress";
-      const isCustom = shopId?.startsWith("custom:");
-      const customLabel = isCustom ? shopId.replace(/^custom:/, "") : "";
-      const shop = shops.find(s => s.id === shopId);
-      const shopName = isAli ? "AliExpress" : isCustom ? customLabel : (shop?.name || shopId);
-      const shopUrl = shop?.url || "";
-      try {
-        let found = false;
-        if (!isAli && hasNexar && part.mpn) {
-          const offers = await nexarSearchMpn(part.mpn, part.name);
-          const match = offers.find(o => shopName && o.distributor?.toLowerCase().includes(shopName.toLowerCase())) || offers[0];
-          if (match) {
-            const idx = updatedSuppliers.findIndex(s => s.partId === part.id && (s.shopId === shopId || s.shopName?.toLowerCase() === match.distributor?.toLowerCase()));
-            const resolvedShopId = shopId;
-            const entry = { id: idx >= 0 ? updatedSuppliers[idx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId: resolvedShopId, shopName: match.distributor, sku: match.sku, price: match.price, currency: match.currency, ai_generated: false, searchUrl: match.url, packQty: 1 };
-            if (idx >= 0) updatedSuppliers[idx] = entry; else updatedSuppliers.push(entry);
-            found = true;
-          }
-        }
-        if (!found && hasTavily) {
-          const query = [part.mpn, part.name].filter(Boolean).join(" ");
-          const domain = isAli ? "aliexpress.com" : (shopUrl ? (() => { try { return new URL(shopUrl).hostname.replace(/^www\./, ""); } catch { return null; } })() : null);
-          const results = await tavilySearch(query, domain || undefined);
-          if (results.length) {
-            const parsed = await parseAliExpressResults(part, results);
-            if (parsed.length) {
-              const s = parsed[0];
-              const idx = updatedSuppliers.findIndex(sup => sup.partId === part.id && (sup.shopId === shopId || (isAli && sup.shopName?.toLowerCase().includes("aliexpress"))));
-              const entry = { id: idx >= 0 ? updatedSuppliers[idx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId, shopName: s.storeName || shopName, sku: "", price: s.priceEur, currency: "EUR", ai_generated: false, searchUrl: s.productUrl, packQty: s.packQty || 1 };
-              if (idx >= 0) updatedSuppliers[idx] = entry; else updatedSuppliers.push(entry);
-              found = true;
-            }
-          }
-        }
-        // Set preferredShopId on the BOM item so the result is visible in the dropdown
-        if (found && !item.preferredShopId) bomShopUpdates[item.id] = shopId;
-      } catch {}
-    }
-    saveSuppliers(updatedSuppliers);
-    if (Object.keys(bomShopUpdates).length) {
-      saveBom(bomItems.map(b => bomShopUpdates[b.id] ? { ...b, preferredShopId: bomShopUpdates[b.id] } : b));
+      saveSuppliers(updatedSuppliers);
+      if (Object.keys(bomShopUpdates).length) saveBom(bomItems.map(b => bomShopUpdates[b.id] ? { ...b, preferredShopId: bomShopUpdates[b.id] } : b));
+    } catch (e: any) {
+      alert("Suche fehlgeschlagen: " + e.message);
     }
     setSearching(false);
     setSearchProgress(null);
