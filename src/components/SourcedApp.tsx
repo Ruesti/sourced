@@ -2775,7 +2775,7 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
           ? shops.map(s => `${s.name}${s.region ? ` (${s.region})` : ""}${s.url ? ` – ${s.url}` : ""}`).join("\n")
           : "Reichelt (DE)\nMouser (DE)\nLCSC (global)\nAliExpress (global)";
         const partsText = aiItems.map(({ item, part, index }) => {
-          const f = [part!.name, part!.mpn ? `MPN: ${part!.mpn}` : null, part!.manufacturer ? `Hersteller: ${part!.manufacturer}` : null, part!.value ? `Wert: ${part!.value}` : null, part!.footprint ? `Gehäuse: ${part!.footprint}` : null, `Menge: ${item.quantity}`].filter(Boolean).join(" | ");
+          const f = [part!.name, part!.mpn ? `MPN: ${part!.mpn}` : null, part!.manufacturer ? `Hersteller: ${part!.manufacturer}` : null, part!.value ? `Wert: ${part!.value}` : null, part!.footprint ? `Gehäuse: ${part!.footprint}` : null, part!.category ? `Kategorie: ${part!.category}` : null, `Menge: ${item.quantity}`].filter(Boolean).join(" | ");
           return `${index + 1}. ${f}`;
         }).join("\n");
         const prompt = `Du bist ein Elektronik-Einkaufsexperte. Finde für jedes Bauteil den besten Lieferanten und schätze den Einzelstückpreis (Kleinserie 1–10 Stück).
@@ -2783,10 +2783,11 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
 Shops (bevorzuge diese):
 ${shopList}
 
-Regeln:
-- Standard-Passives: LCSC oder AliExpress ok
-- ICs, MCUs, Halbleiter: Mouser, DigiKey, Reichelt, LCSC bevorzugen
-- Nutze MPN für SKU wenn vorhanden
+Shop-Auswahl nach Bauteiltyp:
+- Widerstand, Kondensator, Spule, Diode (Standard) → LCSC oder AliExpress (günstig, akzeptables Risiko)
+- IC, MCU, MOSFET, Transistor, Sensor, Modul → zuverlässiger Distributor (Mouser, DigiKey, Reichelt, Farnell, LCSC) — KEIN AliExpress wegen Fälschungsrisiko
+- Stecker, Schalter, Mechanik → Conrad, Reichelt, AliExpress ok
+- Wenn MPN bekannt: nutze sie für SKU und direkte Produkt-URL
 - Unbekanntes Bauteil: shopName null
 
 Stückliste:
