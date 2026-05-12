@@ -532,8 +532,17 @@ async function claudeParseReport(rawText, fileName, apiKey) {
   const prompt = `Du bist ein Experte für Elektronik-Stücklisten (BOM). Dir wird ein Report / eine Datei übergeben.
 Dateiname: "${fileName || "unbekannt"}"
 
-Deine Aufgabe: Extrahiere alle Bauteil-Positionen aus dem Report und gib sie als JSON zurück.
+Deine Aufgabe: Extrahiere nur echte, bestellbare Bauteile aus dem Report und gib sie als JSON zurück.
 Erkenne automatisch das Format (CSV, JSON, Netliste, YAML, Freitext, KiCad, Eagle, Altium, eigenes Format etc.).
+
+AUSSCHLIESSEN — diese Einträge NICHT in "items" aufnehmen:
+- Net-Tie-Symbole (Net-Tie, NetTie, Net_Tie, NET_TIE, NT_*)
+- Testpunkte (TP, TestPoint, Test_Point, TEST_POINT, TP_*)
+- Leistungssymbole / Power-Flags (PWR_FLAG, +3.3V, +5V, +12V, GND, VCC, VDD, AGND, PGND, DGND etc.) wenn sie als eigenständige Schaltzeichen ohne MPN auftauchen
+- Montagelöcher (MountingHole, Mounting_Hole, MH, H*)
+- Passermarken / Fiducials (Fiducial, FID)
+- Kommentare, Notizen, Disclaimer, Logo-Symbole
+- Leere Zeilen oder Einträge ohne Bauteilname
 
 WICHTIG: Antworte NUR mit einem validen JSON-Objekt, kein Markdown, keine Erklärung.
 
@@ -2665,8 +2674,11 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
   const totalCost = projectBom.reduce((sum, item) => {
     const sups = suppliers.filter(s => s.partId === item.partId);
     const preferred = getPreferredSupplier(item, sups);
-    const price = preferred?.price || sups.reduce((m, s) => s.price && s.price < m ? s.price : m, Infinity);
-    return sum + (price < Infinity ? price * item.quantity : 0);
+    const sup = preferred || sups.find(s => s.price);
+    if (!sup?.price) return sum;
+    const packQty = sup.packQty || 1;
+    const packsNeeded = Math.ceil(item.quantity / packQty);
+    return sum + packsNeeded * sup.price;
   }, 0);
 
   const searchPrices = async () => {
@@ -2678,6 +2690,7 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
     if (!hasNexar && !hasTavily) { alert("Add Nexar or Tavily API keys under 🔑 API Key to enable live price search."); return; }
     setSearching(true);
     const updatedSuppliers = [...suppliers];
+    const bomShopUpdates: Record<string, string> = {};
     for (let i = 0; i < allItems.length; i++) {
       const item = allItems[i];
       const part = parts.find(p => p.id === item.partId);
@@ -2686,18 +2699,11 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
 
       let shopId = item.preferredShopId;
 
-      // Auto-suggest shop if none set
+      // If no preferred shop: use first shop from list, or AliExpress as last resort
       if (!shopId) {
-        if (shops.length > 0) {
-          try {
-            const fakeSups = shops.map(sh => ({ id: sh.id, shopName: sh.name, partId: part.id }));
-            const suggestion = await suggestBestSupplier(part, fakeSups);
-            const match = shops.find(sh => sh.name?.toLowerCase().includes(suggestion.recommendedShopName?.toLowerCase()) || suggestion.recommendedShopName?.toLowerCase().includes(sh.name?.toLowerCase()));
-            if (match) shopId = match.id;
-          } catch {}
-        }
-        if (!shopId && hasTavily) shopId = "aliexpress";
-        if (!shopId) continue;
+        if (hasNexar && shops.length > 0) shopId = shops[0].id;
+        else if (hasTavily) shopId = "aliexpress";
+        else continue;
       }
 
       const isAli = shopId === "aliexpress";
@@ -2707,15 +2713,19 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
       const shopName = isAli ? "AliExpress" : isCustom ? customLabel : (shop?.name || shopId);
       const shopUrl = shop?.url || "";
       try {
+        let found = false;
         if (!isAli && hasNexar && part.mpn) {
           const offers = await nexarSearchMpn(part.mpn, part.name);
           const match = offers.find(o => shopName && o.distributor?.toLowerCase().includes(shopName.toLowerCase())) || offers[0];
           if (match) {
             const idx = updatedSuppliers.findIndex(s => s.partId === part.id && (s.shopId === shopId || s.shopName?.toLowerCase() === match.distributor?.toLowerCase()));
-            const entry = { id: idx >= 0 ? updatedSuppliers[idx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId, shopName: match.distributor, sku: match.sku, price: match.price, currency: match.currency, ai_generated: false, searchUrl: match.url, packQty: 1 };
+            const resolvedShopId = shopId;
+            const entry = { id: idx >= 0 ? updatedSuppliers[idx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId: resolvedShopId, shopName: match.distributor, sku: match.sku, price: match.price, currency: match.currency, ai_generated: false, searchUrl: match.url, packQty: 1 };
             if (idx >= 0) updatedSuppliers[idx] = entry; else updatedSuppliers.push(entry);
+            found = true;
           }
-        } else if (hasTavily) {
+        }
+        if (!found && hasTavily) {
           const query = [part.mpn, part.name].filter(Boolean).join(" ");
           const domain = isAli ? "aliexpress.com" : (shopUrl ? (() => { try { return new URL(shopUrl).hostname.replace(/^www\./, ""); } catch { return null; } })() : null);
           const results = await tavilySearch(query, domain || undefined);
@@ -2726,12 +2736,18 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
               const idx = updatedSuppliers.findIndex(sup => sup.partId === part.id && (sup.shopId === shopId || (isAli && sup.shopName?.toLowerCase().includes("aliexpress"))));
               const entry = { id: idx >= 0 ? updatedSuppliers[idx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId, shopName: s.storeName || shopName, sku: "", price: s.priceEur, currency: "EUR", ai_generated: false, searchUrl: s.productUrl, packQty: s.packQty || 1 };
               if (idx >= 0) updatedSuppliers[idx] = entry; else updatedSuppliers.push(entry);
+              found = true;
             }
           }
         }
+        // Set preferredShopId on the BOM item so the result is visible in the dropdown
+        if (found && !item.preferredShopId) bomShopUpdates[item.id] = shopId;
       } catch {}
     }
     saveSuppliers(updatedSuppliers);
+    if (Object.keys(bomShopUpdates).length) {
+      saveBom(bomItems.map(b => bomShopUpdates[b.id] ? { ...b, preferredShopId: bomShopUpdates[b.id] } : b));
+    }
     setSearching(false);
     setSearchProgress(null);
   };
