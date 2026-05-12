@@ -2673,7 +2673,8 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
     const allItems = projectBom.filter(b => b.partId);
     if (!allItems.length) return;
     const hasNexar = !!getNexarId() && !!getNexarSecret();
-    const hasTavily = !!getTavilyKey();
+    const serverHasTavily = await fetch("/api/config").then(r => r.ok ? r.json() : {}).then(d => !!d.hasServerTavily).catch(() => false);
+    const hasTavily = !!getTavilyKey() || serverHasTavily;
     if (!hasNexar && !hasTavily) { alert("Add Nexar or Tavily API keys under 🔑 API Key to enable live price search."); return; }
     setSearching(true);
     const updatedSuppliers = [...suppliers];
@@ -2714,7 +2715,7 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
             const entry = { id: idx >= 0 ? updatedSuppliers[idx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId, shopName: match.distributor, sku: match.sku, price: match.price, currency: match.currency, ai_generated: false, searchUrl: match.url, packQty: 1 };
             if (idx >= 0) updatedSuppliers[idx] = entry; else updatedSuppliers.push(entry);
           }
-        } else if ((isAli || !hasNexar) && hasTavily) {
+        } else if (hasTavily) {
           const query = [part.mpn, part.name].filter(Boolean).join(" ");
           const domain = isAli ? "aliexpress.com" : (shopUrl ? (() => { try { return new URL(shopUrl).hostname.replace(/^www\./, ""); } catch { return null; } })() : null);
           const results = await tavilySearch(query, domain || undefined);
