@@ -69,8 +69,11 @@ CREATE TABLE IF NOT EXISTS bm_suppliers (
   notes        text,
   ai_generated boolean     NOT NULL DEFAULT false,
   pack_qty     integer     NOT NULL DEFAULT 1,
+  stock        integer,
   created_at   timestamptz NOT NULL DEFAULT now()
 );
+-- Migration: add stock column if upgrading from older schema
+ALTER TABLE bm_suppliers ADD COLUMN IF NOT EXISTS stock integer;
 ALTER TABLE bm_suppliers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "users own their suppliers" ON bm_suppliers;
 CREATE POLICY "users own their suppliers" ON bm_suppliers

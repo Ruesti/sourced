@@ -119,8 +119,8 @@ const projectToSb = (p, uid) => ({ id: p.id, user_id: uid, name: p.name, descrip
 const sbToBomItem = r => ({ id: r.id, projectId: r.project_id, partId: r.part_id, quantity: r.quantity, reference: r.reference||"", notes: r.notes||"", preferredSupplierId: r.preferred_supplier_id||null, preferredShopId: r.preferred_shop_id||null });
 const bomItemToSb = (b, uid) => ({ id: b.id, user_id: uid, project_id: b.projectId, part_id: b.partId, quantity: b.quantity, reference: b.reference||null, notes: b.notes||null, preferred_supplier_id: b.preferredSupplierId||null, preferred_shop_id: b.preferredShopId||null });
 
-const sbToSupplier = r => ({ id: r.id, partId: r.part_id, shopId: r.shop_id||"", shopName: r.shop_name, sku: r.sku||"", searchUrl: r.search_url||"", price: r.price ? parseFloat(r.price) : null, currency: r.currency||"EUR", notes: r.notes||"", aiGenerated: r.ai_generated||false, packQty: r.pack_qty||1 });
-const supplierToSb = (s, uid) => ({ id: s.id, user_id: uid, part_id: s.partId, shop_id: s.shopId||null, shop_name: s.shopName, sku: s.sku||null, search_url: s.searchUrl||null, price: s.price||null, currency: s.currency||"EUR", notes: s.notes||null, ai_generated: s.aiGenerated||false, pack_qty: s.packQty||1 });
+const sbToSupplier = r => ({ id: r.id, partId: r.part_id, shopId: r.shop_id||"", shopName: r.shop_name, sku: r.sku||"", searchUrl: r.search_url||"", price: r.price ? parseFloat(r.price) : null, currency: r.currency||"EUR", notes: r.notes||"", aiGenerated: r.ai_generated||false, packQty: r.pack_qty||1, stock: r.stock ?? null });
+const supplierToSb = (s, uid) => ({ id: s.id, user_id: uid, part_id: s.partId, shop_id: s.shopId||null, shop_name: s.shopName, sku: s.sku||null, search_url: s.searchUrl||null, price: s.price||null, currency: s.currency||"EUR", notes: s.notes||null, ai_generated: s.aiGenerated||false, pack_qty: s.packQty||1, stock: s.stock ?? null });
 
 const sbToShop = r => ({ id: r.id, name: r.name, region: r.region||"", url: r.url||"" });
 const shopToSb = (s, uid) => ({ id: s.id, user_id: uid, name: s.name, region: s.region||null, url: s.url||null });
@@ -442,6 +442,38 @@ async function nexarSearchMpn(mpn: string, name: string): Promise<{distributor:s
           currency: price1?.currency || "USD",
         });
       }
+    }
+  }
+  return results;
+}
+
+async function nexarBatchSearch(items: {index:number, mpn:string, name:string}[]): Promise<Map<number,{distributor:string,url:string,sku:string,price:number|null,stock:number|null,currency:string}[]>> {
+  const token = await getNexarToken();
+  const results = new Map<number,any[]>();
+  const CHUNK = 20;
+  const selFrag = `sellers(authorizedOnly:false){company{name homepage}offers{sku url inventoryLevel prices{quantity price currency}}}`;
+  for (let start = 0; start < items.length; start += CHUNK) {
+    const chunk = items.slice(start, start + CHUNK);
+    const queryBody = chunk.map((p, i) => `p${start+i}:supSearchMpn(q:${JSON.stringify(p.mpn||p.name)},limit:5){results{part{mpn ${selFrag}}}}`).join(" ");
+    const res = await fetch("https://api.nexar.com/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify({ query: `query{${queryBody}}` }),
+    });
+    if (!res.ok) throw new Error("Nexar API error: " + res.statusText);
+    const data = await res.json();
+    for (let i = 0; i < chunk.length; i++) {
+      const key = start + i;
+      const offers: {distributor:string,url:string,sku:string,price:number|null,stock:number|null,currency:string}[] = [];
+      for (const r of data.data?.[`p${key}`]?.results || []) {
+        for (const seller of r.part?.sellers || []) {
+          for (const offer of seller.offers || []) {
+            const price1 = offer.prices?.find((p:any) => p.quantity <= 1) || offer.prices?.[0];
+            offers.push({ distributor: seller.company?.name || "?", url: offer.url || seller.company?.homepage || "", sku: offer.sku || "", price: price1 ? parseFloat(price1.price) : null, stock: offer.inventoryLevel ?? null, currency: price1?.currency || "USD" });
+          }
+        }
+      }
+      results.set(chunk[i].index, offers);
     }
   }
   return results;
@@ -2684,68 +2716,104 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
   const searchPrices = async () => {
     const allItems = projectBom.filter(b => b.partId);
     if (!allItems.length) return;
-    if (!getApiKey()) { alert("KI-API-Key erforderlich. Unter 🔑 API Key eintragen."); return; }
+
+    const cfg = await fetch("/api/config").then(r => r.ok ? r.json() : {}).catch(() => ({}));
+    const hasNexar = !!(getNexarId() && getNexarSecret()) || !!cfg.hasServerNexar;
+    const hasAI = !!getApiKey() || !!cfg.hasServerAI;
+    if (!hasNexar && !hasAI) { alert("Nexar-API-Keys oder KI-API-Key unter 🔑 API Key eintragen."); return; }
 
     setSearching(true);
-    setSearchProgress({ done: 0, total: allItems.length, current: "Analysiere BOM…" });
+    setSearchProgress({ done: 0, total: allItems.length, current: "Starte Suche…" });
+
+    const updatedSuppliers = [...suppliers];
+    const bomShopUpdates: Record<string, string> = {};
+
+    const resolveShopId = (distributorName: string, prefShopId: string | null) => {
+      if (prefShopId) return prefShopId;
+      const m = shops.find(s => distributorName.toLowerCase().includes(s.name?.toLowerCase()) || s.name?.toLowerCase().includes(distributorName.toLowerCase()));
+      return m?.id || `custom:${distributorName}`;
+    };
+
+    const upsertSupplier = (partId: string, shopId: string, entry: object) => {
+      const idx = updatedSuppliers.findIndex(s => s.partId === partId && s.shopId === shopId);
+      if (idx >= 0) updatedSuppliers[idx] = { ...updatedSuppliers[idx], ...entry };
+      else updatedSuppliers.push({ id: Date.now().toString() + Math.random(), partId, shopId, ...entry } as any);
+    };
 
     try {
-      const partsForAI = allItems.map((item, i) => {
-        const part = parts.find(p => p.id === item.partId);
-        if (!part) return null;
-        const fields = [part.name, part.mpn ? `MPN: ${part.mpn}` : null, part.manufacturer ? `Hersteller: ${part.manufacturer}` : null, part.value ? `Wert: ${part.value}` : null, part.footprint ? `Gehäuse: ${part.footprint}` : null, `Menge: ${item.quantity}`].filter(Boolean).join(" | ");
-        return `${i + 1}. ${fields}`;
-      }).filter(Boolean).join("\n");
+      // ── Nexar batch (parts with MPN) ────────────────────────────────────────
+      const nexarItems = allItems.map((item, i) => ({ item, part: parts.find(p => p.id === item.partId), index: i })).filter(x => x.part?.mpn);
+      if (hasNexar && nexarItems.length) {
+        setSearchProgress({ done: 0, total: allItems.length, current: `Nexar: ${nexarItems.length} Teile…` });
+        const batchInput = nexarItems.map(x => ({ index: x.index, mpn: x.part!.mpn!, name: x.part!.name }));
+        const nexarResults = await nexarBatchSearch(batchInput);
+        for (const { item, part, index } of nexarItems) {
+          if (!part) continue;
+          const offers = nexarResults.get(index) || [];
+          if (!offers.length) continue;
+          // Prefer user's preferred shop; otherwise pick cheapest in-stock, then cheapest overall
+          const prefShopName = item.preferredShopId && item.preferredShopId !== "aliexpress" && !item.preferredShopId.startsWith("custom:")
+            ? shops.find(s => s.id === item.preferredShopId)?.name || null : null;
+          const match =
+            (prefShopName ? offers.find(o => o.distributor?.toLowerCase().includes(prefShopName.toLowerCase())) : null) ||
+            offers.filter(o => (o.stock ?? 0) > 0).sort((a, b) => (a.price ?? 999) - (b.price ?? 999))[0] ||
+            offers.sort((a, b) => (a.price ?? 999) - (b.price ?? 999))[0];
+          if (!match) continue;
+          const shopId = resolveShopId(match.distributor, item.preferredShopId || null);
+          upsertSupplier(part.id, shopId, { shopName: shops.find(s => s.id === shopId)?.name || match.distributor, sku: match.sku, price: match.price, currency: match.currency, ai_generated: false, searchUrl: match.url, packQty: 1, stock: match.stock });
+          if (!item.preferredShopId) bomShopUpdates[item.id] = shopId;
+          setSearchProgress({ done: index + 1, total: allItems.length, current: part.name });
+        }
+      }
 
-      const shopList = shops.length > 0
-        ? shops.map(s => `${s.name}${s.region ? ` (${s.region})` : ""}${s.url ? ` – ${s.url}` : ""}`).join("\n")
-        : "Reichelt (DE)\nMouser (DE)\nConrad (DE)\nLCSC (global)\nAliExpress (global)";
-
-      const prompt = `Du bist ein Elektronik-Einkaufsexperte. Finde für jedes Bauteil dieser Stückliste den besten Lieferanten aus der Shop-Liste und schätze den Einzelstückpreis (nicht Pack-Preis) für Kleinserie (1–10 Stück).
+      // ── AI batch (parts without MPN, or all parts when no Nexar) ───────────
+      const aiItems = allItems.map((item, i) => ({ item, part: parts.find(p => p.id === item.partId), index: i }))
+        .filter(x => x.part && (!hasNexar || !x.part.mpn));
+      if (hasAI && aiItems.length) {
+        setSearchProgress({ done: nexarItems.length, total: allItems.length, current: `KI: ${aiItems.length} Teile…` });
+        const shopList = shops.length > 0
+          ? shops.map(s => `${s.name}${s.region ? ` (${s.region})` : ""}${s.url ? ` – ${s.url}` : ""}`).join("\n")
+          : "Reichelt (DE)\nMouser (DE)\nLCSC (global)\nAliExpress (global)";
+        const partsText = aiItems.map(({ item, part, index }) => {
+          const f = [part!.name, part!.mpn ? `MPN: ${part!.mpn}` : null, part!.manufacturer ? `Hersteller: ${part!.manufacturer}` : null, part!.value ? `Wert: ${part!.value}` : null, part!.footprint ? `Gehäuse: ${part!.footprint}` : null, `Menge: ${item.quantity}`].filter(Boolean).join(" | ");
+          return `${index + 1}. ${f}`;
+        }).join("\n");
+        const prompt = `Du bist ein Elektronik-Einkaufsexperte. Finde für jedes Bauteil den besten Lieferanten und schätze den Einzelstückpreis (Kleinserie 1–10 Stück).
 
 Shops (bevorzuge diese):
 ${shopList}
 
-Stückliste:
-${partsForAI}
-
 Regeln:
-- Standard-Passives (Widerstände, Kondensatoren, Spulen): LCSC oder AliExpress ok
-- ICs, MCUs, Halbleiter: Reichelt, Mouser, DigiKey, LCSC bevorzugen
-- Wenn MPN bekannt: nutze sie für SKU und direkte Produkt-URL
-- Schätze realistische Preise aus Trainingswissen
-- Unbekanntes/nicht bestellbares Bauteil: shopName null
+- Standard-Passives: LCSC oder AliExpress ok
+- ICs, MCUs, Halbleiter: Mouser, DigiKey, Reichelt, LCSC bevorzugen
+- Nutze MPN für SKU wenn vorhanden
+- Unbekanntes Bauteil: shopName null
 
-Antworte NUR mit JSON-Array, ein Objekt pro Bauteil, exakt gleiche Reihenfolge wie die Stückliste:
-[{"i":1,"shopName":"Reichelt","sku":"ATMEGA 328P-PU","url":"https://www.reichelt.de/...","price":2.50,"currency":"EUR"},{"i":2,"shopName":null,"sku":null,"url":null,"price":null,"currency":"EUR"}]`;
+Stückliste:
+${partsText}
 
-      const text = await callAI([{ role: "user", content: prompt }], 4000);
-      const match = text.replace(/```json|```/g, "").match(/\[[\s\S]*\]/);
-      const results: {i:number,shopName:string|null,sku:string|null,url:string|null,price:number|null,currency:string}[] = match ? JSON.parse(match[0]) : [];
-
-      const updatedSuppliers = [...suppliers];
-      const bomShopUpdates: Record<string, string> = {};
-
-      for (const res of results) {
-        const idx = (res.i || 0) - 1;
-        if (idx < 0 || idx >= allItems.length || !res.shopName || !res.price) continue;
-        const item = allItems[idx];
-        const part = parts.find(p => p.id === item.partId);
-        if (!part) continue;
-        setSearchProgress({ done: idx + 1, total: allItems.length, current: part.name });
-        const matchedShop = shops.find(s => s.name?.toLowerCase() === res.shopName!.toLowerCase() || s.name?.toLowerCase().includes(res.shopName!.toLowerCase()) || res.shopName!.toLowerCase().includes(s.name?.toLowerCase()));
-        const shopId = matchedShop?.id || (res.shopName.toLowerCase().includes("aliexpress") ? "aliexpress" : `custom:${res.shopName}`);
-        const existingIdx = updatedSuppliers.findIndex(s => s.partId === part.id && (s.shopId === shopId || s.shopName?.toLowerCase() === res.shopName!.toLowerCase()));
-        const entry = { id: existingIdx >= 0 ? updatedSuppliers[existingIdx].id : (Date.now().toString() + Math.random()), partId: part.id, shopId, shopName: matchedShop?.name || res.shopName, sku: res.sku || "", price: res.price, currency: res.currency || "EUR", ai_generated: true, searchUrl: res.url || "", packQty: 1 };
-        if (existingIdx >= 0) updatedSuppliers[existingIdx] = entry; else updatedSuppliers.push(entry);
-        if (!item.preferredShopId) bomShopUpdates[item.id] = shopId;
+Antworte NUR mit JSON-Array (gleiche Reihenfolge):
+[{"i":1,"shopName":"Reichelt","sku":"ATM328P-PU","url":"https://...","price":2.50,"currency":"EUR"},{"i":2,"shopName":null,"sku":null,"url":null,"price":null,"currency":"EUR"}]`;
+        const text = await callAI([{ role: "user", content: prompt }], 4000);
+        const m = text.replace(/```json|```/g, "").match(/\[[\s\S]*\]/);
+        const aiResults: {i:number,shopName:string|null,sku:string|null,url:string|null,price:number|null,currency:string}[] = m ? JSON.parse(m[0]) : [];
+        for (const res of aiResults) {
+          const listIdx = aiItems.findIndex(x => x.index === (res.i - 1));
+          if (listIdx < 0 || !res.shopName || !res.price) continue;
+          const { item, part } = aiItems[listIdx];
+          if (!part) continue;
+          const matchedShop = shops.find(s => s.name?.toLowerCase() === res.shopName!.toLowerCase() || s.name?.toLowerCase().includes(res.shopName!.toLowerCase()) || res.shopName!.toLowerCase().includes(s.name?.toLowerCase()));
+          const shopId = matchedShop?.id || (res.shopName.toLowerCase().includes("aliexpress") ? "aliexpress" : `custom:${res.shopName}`);
+          upsertSupplier(part.id, shopId, { shopName: matchedShop?.name || res.shopName, sku: res.sku || "", price: res.price, currency: res.currency || "EUR", ai_generated: true, searchUrl: res.url || "", packQty: 1, stock: null });
+          if (!item.preferredShopId) bomShopUpdates[item.id] = shopId;
+        }
       }
-
-      saveSuppliers(updatedSuppliers);
-      if (Object.keys(bomShopUpdates).length) saveBom(bomItems.map(b => bomShopUpdates[b.id] ? { ...b, preferredShopId: bomShopUpdates[b.id] } : b));
     } catch (e: any) {
       alert("Suche fehlgeschlagen: " + e.message);
     }
+
+    saveSuppliers(updatedSuppliers);
+    if (Object.keys(bomShopUpdates).length) saveBom(bomItems.map(b => bomShopUpdates[b.id] ? { ...b, preferredShopId: bomShopUpdates[b.id] } : b));
     setSearching(false);
     setSearchProgress(null);
   };
@@ -2875,9 +2943,13 @@ Antworte NUR mit JSON-Array, ein Objekt pro Bauteil, exakt gleiche Reihenfolge w
                                 const packQty = preferred?.packQty || 1;
                                 const packsNeeded = Math.ceil(item.quantity / packQty);
                                 const surplus = packsNeeded * packQty - item.quantity;
+                                const stock = preferred?.stock ?? null;
+                                const stockColor = stock === null ? null : stock === 0 ? "var(--red)" : stock < 10 ? "var(--orange)" : "var(--green)";
+                                const stockLabel = stock === null ? null : stock === 0 ? "nicht auf Lager" : `${stock.toLocaleString("de")} auf Lager`;
                                 return (
                                   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                                    <span className="price-tag">{(packsNeeded * prefPrice).toFixed(2)} €</span>
+                                    <span className="price-tag">{(packsNeeded * prefPrice).toFixed(2)} {preferred?.currency === "USD" ? "$" : "€"}</span>
+                                    {stockLabel && <span style={{ fontSize: 10, color: stockColor }}>{stock === 0 ? "⚠" : "✓"} {stockLabel}</span>}
                                     {packQty > 1 && <span style={{ fontSize: 10, color: "var(--text2)" }}>{packsNeeded}× pack/{packQty}</span>}
                                     {surplus > 0 && (
                                       <button
