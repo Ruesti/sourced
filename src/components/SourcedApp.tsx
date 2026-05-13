@@ -549,6 +549,118 @@ function dedupeWebSearchResults(rows: { title: string; url: string; snippet: str
   return out;
 }
 
+function normalizeDistName(d: string | undefined): string {
+  return (d || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/** Wenn keine bevorzugten Shops: einen Distributor wählen, der für möglichst viele BOM-Zeilen (MPN) ein Angebot hat — weniger Pakete, Versand sparen. */
+function computeNexarConsolidationDistributor(
+  consolidatable: { index: number }[],
+  nexarResults: Map<number, { distributor: string }[]>
+): string | null {
+  if (consolidatable.length < 2) return null;
+  const counts = new Map<string, number>();
+  for (const { index } of consolidatable) {
+    const offers = nexarResults.get(index) || [];
+    const seen = new Set<string>();
+    for (const o of offers) {
+      const nd = normalizeDistName(o.distributor);
+      if (!nd || nd === "?") continue;
+      if (seen.has(nd)) continue;
+      seen.add(nd);
+      counts.set(nd, (counts.get(nd) || 0) + 1);
+    }
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [nd, c] of counts) {
+    if (c > bestCount) {
+      bestCount = c;
+      best = nd;
+    }
+  }
+  return bestCount >= 2 ? best : null;
+}
+
+function pickCheapestOffer(offers: { stock?: number | null; price?: number | null }[]) {
+  const inStock = offers.filter(o => (o.stock ?? 0) > 0).sort((a, b) => (a.price ?? 999) - (b.price ?? 999))[0];
+  if (inStock) return inStock;
+  return offers.sort((a, b) => (a.price ?? 999) - (b.price ?? 999))[0];
+}
+
+function selectNexarOffer(
+  offers: { distributor: string; url: string; sku: string; price: number | null; stock: number | null; currency: string }[],
+  item: { preferredShopId?: string | null },
+  shops: { id: string; name: string }[],
+  chosenDistributorNorm: string | null
+): { match: (typeof offers)[0] | null; notes: string } {
+  if (!offers.length) return { match: null, notes: "" };
+  const prefShopName =
+    item.preferredShopId && item.preferredShopId !== "aliexpress" && !String(item.preferredShopId).startsWith("custom:")
+      ? shops.find(s => s.id === item.preferredShopId)?.name || null
+      : null;
+  if (prefShopName) {
+    const pref = offers.find(
+      o =>
+        o.distributor?.toLowerCase().includes(prefShopName.toLowerCase()) ||
+        prefShopName.toLowerCase().includes(o.distributor?.toLowerCase() || "")
+    );
+    if (pref) return { match: pref, notes: "" };
+    const fb = pickCheapestOffer(offers);
+    return {
+      match: fb || null,
+      notes: fb ? `Bei „${prefShopName}“ kein Treffer — Alternative: ${fb.distributor}` : "",
+    };
+  }
+  if (chosenDistributorNorm) {
+    const cons = offers.find(o => normalizeDistName(o.distributor) === chosenDistributorNorm);
+    if (cons) return { match: cons, notes: `Gebündelt bei ${cons.distributor} (weniger Versand)` };
+  }
+  const m = pickCheapestOffer(offers);
+  return { match: m || null, notes: "" };
+}
+
+/** AliExpress: echte Produktseiten (/item/….html) für Warenkorb bevorzugen */
+function scoreAliExpressProductUrl(url: string): number {
+  if (!url || typeof url !== "string") return 0;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "").toLowerCase();
+    if (!host.endsWith("aliexpress.com")) return 0;
+  } catch {
+    return 0;
+  }
+  if (/\/item\/\d+\.html(\?|$)/i.test(url)) return 100;
+  if (/\/item\/\d+/i.test(url)) return 85;
+  if (/\/p\/\d+/i.test(url)) return 70;
+  if (/\.aliexpress\.com\/item\//i.test(url)) return 75;
+  if (/\/(wholesale|af\/|category\/)/i.test(url) || /[?&]SearchText=/i.test(url)) return 5;
+  return 25;
+}
+
+function sortAliExpressWebResults(rows: { title: string; url: string; snippet: string }[]) {
+  return [...rows].sort((a, b) => scoreAliExpressProductUrl(b.url) - scoreAliExpressProductUrl(a.url));
+}
+
+async function tavilyFindDirectAliExpressItem(part: {
+  mpn?: string;
+  name?: string;
+  value?: string;
+}): Promise<string | null> {
+  const q = [part.mpn, part.name, part.value, "aliexpress.com/item"].filter(Boolean).join(" ").trim().slice(0, 400);
+  if (q.length < 6) return null;
+  try {
+    const rows = await tavilySearch(q);
+    const sorted = sortAliExpressWebResults(rows);
+    for (const r of sorted) {
+      if (scoreAliExpressProductUrl(r.url) >= 80) return r.url;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 type AliParsedOffer = {
   kind?: "retail" | "bulk";
   storeName: string;
@@ -577,7 +689,7 @@ Extract 1–4 purchase options as JSON. Rules:
 - packQty = pieces in one purchase (e.g. 10, 100, 1000). Default 1.
 - shippingEur = estimated shipping to EU in EUR if mentioned (\"free shipping\" → 0); null if unknown.
 - kind: \"retail\" for normal packs; \"bulk\" for manufacturer reels / 500+ pcs lots / \"1000pcs\" listings.
-- productUrl must be one of the result URLs (or obvious product link from snippet).
+- productUrl: MUST prefer a **direct product page** URL from the list: path like \`/item/1234567890.html\` on *.aliexpress.com. Do NOT use search/wholesale/category URLs if any /item/… link exists in the results. If only bad URLs exist, pick the closest /item/… link anyway.
 ${bulkHint}
 
 Reply ONLY with JSON array, no markdown:
@@ -587,7 +699,10 @@ Reply ONLY with JSON array, no markdown:
   if (!match) return [];
   try {
     const arr = JSON.parse(match[0]) as AliParsedOffer[];
-    return Array.isArray(arr) ? arr.filter(x => x && x.productUrl) : [];
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter(x => x && x.productUrl)
+      .sort((a, b) => scoreAliExpressProductUrl(b.productUrl) - scoreAliExpressProductUrl(a.productUrl));
   } catch {
     return [];
   }
@@ -2776,13 +2891,6 @@ function SupplierDropdown({ item, part, suppliers, shops, onSelectShop }) {
 // ── BOM Tab ───────────────────────────────────────────────────────────────────
 function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, suppliers, saveSuppliers, shops, initialProjectId = null }) {
   const [activeProject, setActiveProject] = useState(null);
-
-  useEffect(() => {
-    if (initialProjectId) {
-      const p = projects.find(p => p.id === initialProjectId);
-      if (p) setActiveProject(p);
-    }
-  }, [initialProjectId]);
   const [showNewProj, setShowNewProj] = useState(false);
   const [newProjName, setNewProjName] = useState("");
   const [showAddPart, setShowAddPart] = useState(false);
@@ -2790,6 +2898,18 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
   const [showCart, setShowCart] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchProgress, setSearchProgress] = useState<{done:number,total:number,current:string}|null>(null);
+  const [sourcingSummary, setSourcingSummary] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialProjectId) {
+      const p = projects.find(p => p.id === initialProjectId);
+      if (p) setActiveProject(p);
+    }
+  }, [initialProjectId]);
+
+  useEffect(() => {
+    setSourcingSummary(null);
+  }, [activeProject?.id]);
 
   const projectBom = bomItems.filter(b => b.projectId === activeProject?.id);
 
@@ -2887,6 +3007,7 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
     }
 
     setSearching(true);
+    setSourcingSummary(null);
     setSearchProgress({ done: 0, total: allItems.length, current: "Starte Suche…" });
 
     const updatedSuppliers = [...suppliers];
@@ -2911,21 +3032,27 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
         setSearchProgress({ done: 0, total: allItems.length, current: `Nexar: ${nexarItems.length} Teile…` });
         const batchInput = nexarItems.map(x => ({ index: x.index, mpn: x.part!.mpn!, name: x.part!.name }));
         const nexarResults = await nexarBatchSearch(batchInput);
+        const consolidatable = nexarItems.filter(x => !x.item.preferredShopId);
+        const chosenDistributorNorm = computeNexarConsolidationDistributor(consolidatable, nexarResults);
         for (const { item, part, index } of nexarItems) {
           if (!part) continue;
           const offers = nexarResults.get(index) || [];
           if (!offers.length) continue;
-          // Prefer user's preferred shop; otherwise pick cheapest in-stock, then cheapest overall
-          const prefShopName = item.preferredShopId && item.preferredShopId !== "aliexpress" && !item.preferredShopId.startsWith("custom:")
-            ? shops.find(s => s.id === item.preferredShopId)?.name || null : null;
-          const match =
-            (prefShopName ? offers.find(o => o.distributor?.toLowerCase().includes(prefShopName.toLowerCase())) : null) ||
-            offers.filter(o => (o.stock ?? 0) > 0).sort((a, b) => (a.price ?? 999) - (b.price ?? 999))[0] ||
-            offers.sort((a, b) => (a.price ?? 999) - (b.price ?? 999))[0];
+          const { match, notes } = selectNexarOffer(offers, item, shops, chosenDistributorNorm);
           if (!match) continue;
           const prefForResolve = item.preferredShopId === "aliexpress" ? null : (item.preferredShopId || null);
           const shopId = resolveShopId(match.distributor, prefForResolve);
-          upsertSupplier(part.id, shopId, { shopName: shops.find(s => s.id === shopId)?.name || match.distributor, sku: match.sku, price: match.price, currency: match.currency, ai_generated: false, searchUrl: match.url, packQty: 1, stock: match.stock });
+          upsertSupplier(part.id, shopId, {
+            shopName: shops.find(s => s.id === shopId)?.name || match.distributor,
+            sku: match.sku,
+            price: match.price,
+            currency: match.currency,
+            ai_generated: false,
+            searchUrl: match.url,
+            packQty: 1,
+            stock: match.stock,
+            notes: notes || "",
+          });
           if (!item.preferredShopId) bomShopUpdates[item.id] = shopId;
           setSearchProgress({ done: index + 1, total: allItems.length, current: part.name });
         }
@@ -2940,9 +3067,19 @@ function BomTab({ projects, saveProjects, bomItems, saveBom, parts, saveParts, s
           ? shops.map(s => `${s.name}${s.region ? ` (${s.region})` : ""}${s.url ? ` – ${s.url}` : ""}`).join("\n")
           : "Reichelt (DE)\nMouser (DE)\nLCSC (global)\nAliExpress (global)";
         const partsText = aiItems.map(({ item, part, index }) => {
-          const f = [part!.name, part!.mpn ? `MPN: ${part!.mpn}` : null, part!.manufacturer ? `Hersteller: ${part!.manufacturer}` : null, part!.value ? `Wert: ${part!.value}` : null, part!.footprint ? `Gehäuse: ${part!.footprint}` : null, part!.category ? `Kategorie: ${part!.category}` : null, `Menge: ${item.quantity}`].filter(Boolean).join(" | ");
+          const f = [part!.name, part!.mpn ? `MPN: ${part!.mpn}` : null, part!.manufacturer ? `Hersteller: ${part!.manufacturer}` : null, part!.value ? `Wert: ${part!.value}` : null, part!.footprint ? `Gehäuse: ${part!.footprint}` : null, part!.category ? `Kategorie: ${part!.category}` : null, `Menge: ${item.quantity}`, item.preferredShopId ? `Bevorzugter Shop-ID: ${item.preferredShopId}` : `Bevorzugter Shop: (keiner)`].filter(Boolean).join(" | ");
           return `${index + 1}. ${f}`;
         }).join("\n");
+        const anyPref = aiItems.some(x => x.item.preferredShopId);
+        const noPrefCount = aiItems.filter(x => !x.item.preferredShopId).length;
+        const consolidateHint =
+          noPrefCount >= 2 && !anyPref
+            ? `\n\nWICHTIG — Versand sparen: **Alle** Zeilen haben keinen bevorzugten Shop. Nutze **dieselbe** shopName für **so viele Zeilen wie möglich**, wenn dieser Shop alle Teile realistisch führen kann. Nur wenn ein Teil dort nicht sinnvoll verfügbar ist, wähle einen anderen zuverlässigen Shop für genau diese Zeile(n). Ziel: **wenige verschiedene Shops**.`
+            : noPrefCount >= 2 && anyPref
+              ? `\n\nFür Zeilen **ohne** bevorzugten Shop: nutze nach Möglichkeit **einen gemeinsamen** shopName für diese Zeilen (weniger Pakete). Zeilen **mit** bevorzugtem Shop: diesen Shop bevorzugen; wenn kein Treffer: Alternativshop und sku mit Prefix \"ALT:\".`
+              : anyPref
+                ? `\n\nZeilen mit bevorzugtem Shop: nutze wenn möglich genau diesen Shop. Wenn dort kein realistischer Treffer: **Alternativshop** mit guter Produkt-URL, sku mit Prefix \"ALT:\".`
+                : "";
         const prompt = `Du bist ein Elektronik-Einkaufsexperte. Finde für jedes Bauteil den besten Lieferanten und schätze den Einzelstückpreis (Kleinserie 1–10 Stück).
 
 Shops (bevorzuge diese):
@@ -2952,8 +3089,9 @@ Shop-Auswahl nach Bauteiltyp:
 - Widerstand, Kondensator, Spule, Diode (Standard) → LCSC oder AliExpress (günstig, akzeptables Risiko)
 - IC, MCU, MOSFET, Transistor, Sensor, Modul → zuverlässiger Distributor (Mouser, DigiKey, Reichelt, Farnell, LCSC) — KEIN AliExpress wegen Fälschungsrisiko
 - Stecker, Schalter, Mechanik → Conrad, Reichelt, AliExpress ok
-- Wenn MPN bekannt: nutze sie für SKU und direkte Produkt-URL
+- Wenn MPN bekannt: nutze sie für SKU und **direkte Produkt-URL** (keine Shop-Suchseiten wenn du eine Produktseite kennst)
 - Unbekanntes Bauteil: shopName null
+${consolidateHint}
 
 Stückliste:
 ${partsText}
@@ -2970,7 +3108,17 @@ Antworte NUR mit JSON-Array (gleiche Reihenfolge):
           if (!part) continue;
           const matchedShop = shops.find(s => s.name?.toLowerCase() === res.shopName!.toLowerCase() || s.name?.toLowerCase().includes(res.shopName!.toLowerCase()) || res.shopName!.toLowerCase().includes(s.name?.toLowerCase()));
           const shopId = matchedShop?.id || (res.shopName.toLowerCase().includes("aliexpress") ? "aliexpress" : `custom:${res.shopName}`);
-          upsertSupplier(part.id, shopId, { shopName: matchedShop?.name || res.shopName, sku: res.sku || "", price: res.price, currency: res.currency || "EUR", ai_generated: true, searchUrl: res.url || "", packQty: 1, stock: null });
+          upsertSupplier(part.id, shopId, {
+            shopName: matchedShop?.name || res.shopName,
+            sku: res.sku || "",
+            price: res.price,
+            currency: res.currency || "EUR",
+            ai_generated: true,
+            searchUrl: res.url || "",
+            packQty: 1,
+            stock: null,
+            notes: res.sku?.startsWith("ALT:") ? "Alternativlieferant (bevorzugter Shop nicht verfügbar)" : "",
+          });
           if (!item.preferredShopId) bomShopUpdates[item.id] = shopId;
         }
       }
@@ -2993,15 +3141,25 @@ Antworte NUR mit JSON-Array (gleiche Reihenfolge):
             if (passive) {
               const q2 = buildAliExpressSearchQuery(part, true);
               const w2 = await tavilySearchAliExpress(q2);
-              web = dedupeWebSearchResults([...web, ...w2]);
+              web = sortAliExpressWebResults(dedupeWebSearchResults([...web, ...w2]));
             } else {
-              web = dedupeWebSearchResults(web);
+              web = sortAliExpressWebResults(dedupeWebSearchResults(web));
             }
             const parsed = await parseAliExpressResults(part, web, item.quantity || 1, passive);
             const retailCandidates = parsed.filter(o => (o.kind || "retail") !== "bulk" && o.productUrl);
             const bulkCandidates = parsed.filter(o => o.kind === "bulk" && (o.packQty || 0) >= 50 && o.productUrl);
             const pickRetail = retailCandidates.sort((a, b) => (a.packQty || 1) - (b.packQty || 1))[0] || parsed.find(o => o.productUrl);
             const pickBulk = bulkCandidates.sort((a, b) => (b.packQty || 0) - (a.packQty || 0))[0];
+            let retailUrl = pickRetail?.productUrl || "";
+            if (retailUrl && scoreAliExpressProductUrl(retailUrl) < 80 && hasTavily) {
+              const better = await tavilyFindDirectAliExpressItem(part);
+              if (better) retailUrl = better;
+            }
+            let bulkUrl = pickBulk?.productUrl || "";
+            if (bulkUrl && scoreAliExpressProductUrl(bulkUrl) < 80 && hasTavily) {
+              const betterB = await tavilyFindDirectAliExpressItem(part);
+              if (betterB && scoreAliExpressProductUrl(betterB) >= scoreAliExpressProductUrl(bulkUrl)) bulkUrl = betterB;
+            }
             const fmtNotes = (o: AliParsedOffer) => {
               const bits = [];
               if (o.shippingEur != null && o.shippingEur > 0) bits.push(`Versand ~${o.shippingEur.toFixed(2)} €`);
@@ -3013,32 +3171,36 @@ Antworte NUR mit JSON-Array (gleiche Reihenfolge):
               const pq = Math.max(1, pickRetail.packQty || 1);
               const ship = pickRetail.shippingEur != null && pickRetail.shippingEur > 0 ? pickRetail.shippingEur : 0;
               const total = (pickRetail.priceEur != null ? pickRetail.priceEur : 0) + ship;
+              const linkScore = scoreAliExpressProductUrl(retailUrl);
               upsertSupplier(part.id, "aliexpress", {
                 shopName: "AliExpress",
                 sku: (pickRetail.note || "live").slice(0, 120),
                 price: pickRetail.priceEur != null ? total : null,
                 currency: "EUR",
                 ai_generated: false,
-                searchUrl: pickRetail.productUrl,
+                searchUrl: retailUrl || pickRetail.productUrl,
                 packQty: pq,
                 stock: null,
-                notes: fmtNotes(pickRetail),
+                notes: [fmtNotes(pickRetail), linkScore >= 80 ? "" : "Hinweis: Link ggf. Suchseite — Produkt im Shop prüfen."].filter(Boolean).join(" · "),
               });
             }
-            if (pickBulk && pickBulk.productUrl && (pickBulk.packQty || 0) >= 50 && pickBulk.productUrl !== pickRetail?.productUrl) {
+            const ru = retailUrl || pickRetail?.productUrl || "";
+            const bu = bulkUrl || pickBulk?.productUrl || "";
+            if (pickBulk && pickBulk.productUrl && (pickBulk.packQty || 0) >= 50 && bu !== ru) {
               const pqB = Math.max(50, pickBulk.packQty || 50);
               const shipB = pickBulk.shippingEur != null && pickBulk.shippingEur > 0 ? pickBulk.shippingEur : 0;
               const totalB = (pickBulk.priceEur != null ? pickBulk.priceEur : 0) + shipB;
+              const bScore = scoreAliExpressProductUrl(bulkUrl);
               upsertSupplier(part.id, "aliexpress-bulk", {
                 shopName: "AliExpress (Großlot)",
                 sku: `≥${pqB} Stk`,
                 price: pickBulk.priceEur != null ? totalB : null,
                 currency: "EUR",
                 ai_generated: false,
-                searchUrl: pickBulk.productUrl,
+                searchUrl: bulkUrl || pickBulk.productUrl,
                 packQty: pqB,
                 stock: null,
-                notes: fmtNotes(pickBulk),
+                notes: [fmtNotes(pickBulk), bScore >= 80 ? "" : "Hinweis: Link prüfen (Großlot)."].filter(Boolean).join(" · "),
               });
             }
           } catch (e: any) {
@@ -3046,7 +3208,34 @@ Antworte NUR mit JSON-Array (gleiche Reihenfolge):
           }
         }
       }
+
+      const tally: Record<string, number> = {};
+      let pricedLines = 0;
+      for (const it of allItems) {
+        const part = parts.find(p => p.id === it.partId);
+        if (!part) continue;
+        const sups = updatedSuppliers.filter(s => s.partId === part.id);
+        const pref = getPreferredSupplier(it, sups);
+        const s = pref || sups.find(x => x.price != null);
+        if (!s || s.price == null) continue;
+        pricedLines++;
+        const label = shops.find(sh => sh.id === s.shopId)?.name || s.shopName || String(s.shopId);
+        tally[label] = (tally[label] || 0) + 1;
+      }
+      const sortedShops = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+      if (sortedShops.length && pricedLines > 0) {
+        const [topShop, n] = sortedShops[0];
+        const extra = sortedShops.slice(1).map(([k, v]) => `${k} (${v})`).join(", ");
+        setSourcingSummary(
+          `${pricedLines}/${allItems.length} Zeilen mit Preis — häufigster Shop: „${topShop}“ (${n})` +
+            (extra ? `. Weitere: ${extra}` : "") +
+            ". Tipp: 🛒 Cart — bei einem Distributor oft mehrere Teile in einem Warenkorb (Versand sparen)."
+        );
+      } else if (allItems.length) {
+        setSourcingSummary("Keine oder nur wenige Preise — Nexar/KI/Tavily prüfen, MPN ergänzen oder bevorzugten Shop anpassen.");
+      }
     } catch (e: any) {
+      setSourcingSummary(null);
       alert("Suche fehlgeschlagen: " + e.message);
     }
 
@@ -3122,7 +3311,7 @@ Antworte NUR mit JSON-Array (gleiche Reihenfolge):
                     className="btn btn-ai btn-sm"
                     onClick={searchPrices}
                     disabled={searching}
-                    title="Nexar (MPN), KI (ohne MPN), bei AliExpress-Bevorzugung + Tavily: Live-Suche inkl. Großlots"
+                    title="Nexar (MPN), KI (ohne MPN), ohne bevorzugten Shop: gebündelter Distributor; AliExpress + Tavily: möglichst /item/-Produktlinks für den Warenkorb"
                   >
                     {searching
                       ? <><span className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5, marginRight: 4 }} />{searchProgress ? `${searchProgress.done}/${searchProgress.total} ${searchProgress.current}` : "Searching…"}</>
@@ -3131,6 +3320,12 @@ Antworte NUR mit JSON-Array (gleiche Reihenfolge):
                   <button className="btn btn-primary btn-sm" onClick={() => setShowAddPart(true)}>+ Part</button>
                 </div>
               </div>
+
+              {sourcingSummary && (
+                <div style={{ marginBottom: 12, padding: "10px 14px", borderRadius: 8, border: "1px solid rgba(88,166,255,0.25)", background: "rgba(88,166,255,0.06)", fontSize: 12, color: "var(--text2)", lineHeight: 1.5 }}>
+                  <strong style={{ color: "var(--text)" }}>Letzte Suche:</strong> {sourcingSummary}
+                </div>
+              )}
 
               {projectBom.length === 0 ? (
                 <div className="empty-state">
@@ -3351,7 +3546,7 @@ const SHOP_CART_CONFIGS = {
     cartType: "url_single",
     buildUrl: (items) =>
       items.map(it => it.productUrl || `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(it.name)}`),
-    notes: "Opens product pages/search. Add to cart manually.",
+    notes: "Opens product pages. Prefer /item/… links from search — AliExpress has no official multi-item cart API here.",
   },
   "aliexpress-bulk": {
     name: "AliExpress (Großlot)",
