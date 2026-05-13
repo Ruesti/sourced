@@ -1354,6 +1354,17 @@ const css = `
     padding: 6px 24px; display: flex; align-items: center; gap: 10;
     font-size: 12px; color: var(--text2);
   }
+
+  .creator-strip {
+    background: linear-gradient(90deg, rgba(163,113,247,0.12), rgba(88,166,255,0.08));
+    border-bottom: 1px solid rgba(163,113,247,0.22);
+    padding: 8px 24px; display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--text2);
+  }
+  .creator-strip-text { flex: 1; min-width: 200px; line-height: 1.45; }
+  .creator-strip-text strong { color: var(--text); font-weight: 600; }
+  .creator-strip-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .creator-strip-icon { font-size: 14px; flex-shrink: 0; }
 `;
 
 // ── Auth Modal (Login / Register) ─────────────────────────────────────────────
@@ -1481,7 +1492,7 @@ function MigrationModal({ localData, userId, onDone, onSkip }) {
 }
 
 // ── Onboarding Screen ─────────────────────────────────────────────────────────
-function OnboardingScreen({ onDone }) {
+function OnboardingScreen({ onDone, creatorPromo }) {
   const [provider, setProvider] = useState("anthropic");
   const [key, setKey] = useState("");
   const [endpoint, setEndpoint] = useState("");
@@ -1592,6 +1603,21 @@ function OnboardingScreen({ onDone }) {
               Start without AI features →
             </button>
           </div>
+
+          {creatorPromo && (creatorPromo.url || creatorPromo.downloadUrl) && (
+            <div style={{ ...card, marginTop: 20, textAlign: "center" }}>
+              <div style={{ fontWeight: 600, marginBottom: 8, color: "var(--text)" }}>Vom Autor verteilt?</div>
+              {creatorPromo.stripNote && <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 10, lineHeight: 1.5 }}>{creatorPromo.stripNote}</div>}
+              <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 8 }}>
+                {creatorPromo.downloadUrl && (
+                  <a href={creatorPromo.downloadUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>Download / Anleitung</a>
+                )}
+                {creatorPromo.url && (
+                  <a href={creatorPromo.url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ textDecoration: "none" }}>{creatorPromo.label || "Website des Autors"}</a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1650,8 +1676,9 @@ const HELP_SECTIONS = [
   },
 ];
 
-function HelpModal({ onClose }) {
+function HelpModal({ onClose, creatorPromo }) {
   const [openSection, setOpenSection] = useState(null);
+  const showPromo = creatorPromo && (creatorPromo.url || creatorPromo.downloadUrl);
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -1660,6 +1687,24 @@ function HelpModal({ onClose }) {
         <div style={{ fontSize: 12, color: "var(--text3)", marginBottom: 20 }}>
           PartsDB — AI-powered parts database &amp; BOM manager
         </div>
+        {showPromo && (
+          <div style={{ background: "rgba(163,113,247,0.08)", border: "1px solid rgba(163,113,247,0.25)", borderRadius: 8, padding: "12px 14px", marginBottom: 16, fontSize: 13, color: "var(--text2)", lineHeight: 1.5 }}>
+            <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>Distribution &amp; updates</div>
+            {creatorPromo.stripNote ? (
+              <div style={{ marginBottom: 10 }}>{creatorPromo.stripNote}</div>
+            ) : (
+              <div style={{ marginBottom: 10 }}>Use the author&apos;s links for downloads, updates, and other tools they publish.</div>
+            )}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {creatorPromo.downloadUrl && (
+                <a href={creatorPromo.downloadUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>Download / setup</a>
+              )}
+              {creatorPromo.url && (
+                <a href={creatorPromo.url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ textDecoration: "none" }}>{creatorPromo.label || "Author website"}</a>
+              )}
+            </div>
+          </div>
+        )}
         {HELP_SECTIONS.map((section) => (
           <div key={section.title} style={{ marginBottom: 8 }}>
             <button onClick={() => setOpenSection(openSection === section.title ? null : section.title)}
@@ -1885,9 +1930,21 @@ export default function SourcedApp() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showMigration, setShowMigration] = useState(false);
   const [localDataForMigration, setLocalDataForMigration] = useState(null);
+  const [creatorPromo, setCreatorPromo] = useState({ url: "", label: "", downloadUrl: "", stripNote: "" });
 
   useEffect(() => {
     (async () => {
+      let cfg: Record<string, string> = {};
+      try {
+        cfg = await fetch("/api/config").then(r => (r.ok ? r.json() : {})).catch(() => ({}));
+      } catch {}
+      setCreatorPromo({
+        url: cfg.creatorSiteUrl || "",
+        label: cfg.creatorSiteLabel || "",
+        downloadUrl: cfg.downloadPageUrl || "",
+        stripNote: cfg.creatorStripNote || "",
+      });
+
       let cloudUser = null;
       try {
         const session = getSbSession();
@@ -1918,8 +1975,7 @@ export default function SourcedApp() {
       }
       setLoaded(true);
       if (!getApiKey()) {
-        // Skip onboarding if server already has an AI key configured
-        const serverHasAI = await fetch("/api/config").then(r => r.ok ? r.json() : {}).then(d => !!d.hasServerAI).catch(() => false);
+        const serverHasAI = !!cfg.hasServerAI;
         if (!serverHasAI) setShowOnboarding(true);
         else setApiKeySet(true); // server key counts as "key set"
       }
@@ -1986,7 +2042,7 @@ export default function SourcedApp() {
     </div>
   );
 
-  if (showOnboarding) return <OnboardingScreen onDone={() => { setShowOnboarding(false); setApiKeySet(!!getApiKey()); }} />;
+  if (showOnboarding) return <OnboardingScreen onDone={() => { setShowOnboarding(false); setApiKeySet(!!getApiKey()); }} creatorPromo={creatorPromo} />;
 
   return (
     <>
@@ -2037,6 +2093,32 @@ export default function SourcedApp() {
           </button>
         </header>
 
+        {(creatorPromo.url || creatorPromo.downloadUrl) && (
+          <div className="creator-strip" role="region" aria-label="Author">
+            <span className="creator-strip-icon" aria-hidden>🔗</span>
+            <div className="creator-strip-text">
+              <strong>Sourced</strong>
+              {creatorPromo.stripNote ? (
+                <span> — {creatorPromo.stripNote}</span>
+              ) : (
+                <span> — Wenn du von der Website des Autors kommst: dort gibt es oft <strong>Download</strong>, Updates und weitere Projekte.</span>
+              )}
+            </div>
+            <div className="creator-strip-actions">
+              {creatorPromo.downloadUrl && (
+                <a href={creatorPromo.downloadUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>
+                  Download / Anleitung
+                </a>
+              )}
+              {creatorPromo.url && (
+                <a href={creatorPromo.url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ textDecoration: "none" }}>
+                  {creatorPromo.label || "Mehr vom Autor"}
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
         {!user && (
           <div className="beta-bar">
             <span className="sync-dot offline" style={{ marginRight:6 }} />
@@ -2056,7 +2138,7 @@ export default function SourcedApp() {
         </main>
 
         {showKeyModal  && <ApiKeyModal onClose={() => { setShowKeyModal(false); setApiKeySet(!!getApiKey()); }} />}
-        {showHelpModal && <HelpModal onClose={() => setShowHelpModal(false)} />}
+        {showHelpModal && <HelpModal onClose={() => setShowHelpModal(false)} creatorPromo={creatorPromo} />}
         {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onLoggedIn={handleLoggedIn} />}
         {showMigration && localDataForMigration && user && (
           <MigrationModal localData={localDataForMigration} userId={user.id} onDone={handleMigrationDone} onSkip={() => setShowMigration(false)} />
