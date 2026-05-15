@@ -3,19 +3,43 @@ import { useState } from "react";
 import { BUILTIN_TEMPLATES, PART_GROUPS } from "../lib/shop-data";
 import { claudeSearch, getApiKey } from "../lib/ai-api";
 
+const PASSIVE_CATS = new Set(["Resistor", "Capacitor", "Inductor", "Diode", "LED"]);
+
 // ── Parts Tab ─────────────────────────────────────────────────────────────────
 
-export default function PartsTab({ parts, saveParts, suppliers, saveSuppliers, shops }) {
+export default function PartsTab({ parts, saveParts, suppliers, saveSuppliers, shops, bomItems = [] }) {
   const [query, setQuery] = useState("");
   const [catFilter, setCatFilter] = useState("");
+  const [lowStockOnly, setLowStockOnly] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editPart, setEditPart] = useState(null);
   const [detailPart, setDetailPart] = useState(null);
+  const [dismissedReels, setDismissedReels] = useState({});
 
   const cats = [...new Set(parts.map(p => {
     const tmpl = BUILTIN_TEMPLATES.find(t => t.id === p.templateId);
     return tmpl ? tmpl.group : (p.category || null);
   }).filter(Boolean))];
+
+  // Compute project usage count per part from bomItems
+  const partProjectCount = {};
+  bomItems.forEach(b => {
+    if (!partProjectCount[b.partId]) partProjectCount[b.partId] = new Set();
+    partProjectCount[b.partId].add(b.projectId);
+  });
+
+  const reelCandidates = parts
+    .filter(p => {
+      if (dismissedReels[p.id]) return false;
+      const isPassive = p.partType === "passive" || PASSIVE_CATS.has(p.category);
+      const projectCount = partProjectCount[p.id]?.size || 0;
+      return isPassive && projectCount > 2 && !p.reelQty;
+    })
+    .map(p => ({ ...p, _projectCount: partProjectCount[p.id]?.size || 0 }))
+    .sort((a, b) => b._projectCount - a._projectCount)
+    .slice(0, 5);
+
+  const lowStockCount = parts.filter(p => p.stockMin > 0 && (p.stock || 0) < p.stockMin).length;
 
   const filtered = parts.filter(p => {
     const q = query.toLowerCase();
@@ -23,7 +47,8 @@ export default function PartsTab({ parts, saveParts, suppliers, saveSuppliers, s
     const matchQ = !q || p.name?.toLowerCase().includes(q) || p.mpn?.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q) || p.manufacturer?.toLowerCase().includes(q);
     const partCat = tmpl ? tmpl.group : p.category;
     const matchC = !catFilter || partCat === catFilter;
-    return matchQ && matchC;
+    const matchLS = !lowStockOnly || (p.stockMin > 0 && (p.stock || 0) < p.stockMin);
+    return matchQ && matchC && matchLS;
   });
 
   const handleSave = (part) => {
@@ -53,6 +78,28 @@ export default function PartsTab({ parts, saveParts, suppliers, saveSuppliers, s
         <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Add Part</button>
       </div>
 
+      {reelCandidates.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", letterSpacing: "0.07em", marginBottom: 8 }}>
+            🔄 REEL RECOMMENDATIONS
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {reelCandidates.map(p => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(88,166,255,0.06)", border: "1px solid rgba(88,166,255,0.2)", borderRadius: 8, padding: "8px 14px", fontSize: 12 }}>
+                <span style={{ fontSize: 16 }}>📦</span>
+                <div style={{ flex: 1 }}>
+                  <strong>{p.name}</strong>
+                  {p.mpn && <span style={{ color: "var(--text3)", fontFamily: "IBM Plex Mono", fontSize: 11, marginLeft: 8 }}>{p.mpn}</span>}
+                  <span style={{ color: "var(--blue)", marginLeft: 8 }}>— used in {p._projectCount} projects, no reel configured</span>
+                </div>
+                <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={() => setEditPart(p)}>Set reel qty</button>
+                <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: "var(--text3)" }} onClick={() => setDismissedReels(d => ({ ...d, [p.id]: true }))}>✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="search-bar">
         <input className="search-input" placeholder="Search by name, MPN, manufacturer…" value={query} onChange={e => setQuery(e.target.value)} />
         <select style={{ background: "var(--bg2)", border: "1px solid var(--border)", color: "var(--text)", padding: "7px 12px", borderRadius: 6, fontSize: 13, fontFamily: "IBM Plex Sans" }}
@@ -63,6 +110,13 @@ export default function PartsTab({ parts, saveParts, suppliers, saveSuppliers, s
             return <option key={c} value={c}>{g ? `${g.icon} ${g.label}` : c}</option>;
           })}
         </select>
+        {lowStockCount > 0 && (
+          <button onClick={() => setLowStockOnly(v => !v)}
+            className={`btn btn-sm ${lowStockOnly ? "btn-primary" : "btn-secondary"}`}
+            style={{ whiteSpace: "nowrap", borderColor: lowStockOnly ? undefined : "rgba(210,153,34,0.4)", color: lowStockOnly ? undefined : "var(--orange)" }}>
+            ⚠️ Low stock ({lowStockCount})
+          </button>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -91,9 +145,9 @@ export default function PartsTab({ parts, saveParts, suppliers, saveSuppliers, s
                 const lowestPrice = sups.reduce((m, s) => s.price && s.price < m ? s.price : m, Infinity);
                 const attrs = p.attributes || {};
                 const keyAttrs = tmpl?.fields.slice(0, 2).map(f => attrs[f.key] ? `${f.label}: ${attrs[f.key]}${f.unit ? " " + f.unit : ""}` : null).filter(Boolean) || [];
-                const stockWarn = p.stockMin > 0 && (p.stock || 0) <= p.stockMin;
+                const stockWarn = p.stockMin > 0 && (p.stock || 0) < p.stockMin;
                 return (
-                  <tr key={p.id}>
+                  <tr key={p.id} style={stockWarn ? { background: "rgba(248,81,73,0.04)" } : undefined}>
                     <td>
                       <div style={{ fontWeight: 500, fontSize: 13 }}>{p.name}</div>
                       {p.description && <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{p.description}</div>}
@@ -119,8 +173,8 @@ export default function PartsTab({ parts, saveParts, suppliers, saveSuppliers, s
                           </span>
                         )}
                         {(p.stock !== undefined && p.stock !== null) && (
-                          <span style={{ fontSize: 11, color: stockWarn ? "var(--orange)" : "var(--text3)" }}>
-                            {stockWarn ? "⚠️" : ""} {p.stock} pcs{p.stockMin > 0 ? ` / min. ${p.stockMin}` : ""}
+                          <span style={{ fontSize: 11, color: stockWarn ? "var(--red)" : "var(--text3)", fontWeight: stockWarn ? 600 : 400 }}>
+                            {stockWarn ? "⚠️ " : ""}{p.stock} pcs{p.stockMin > 0 ? ` / min. ${p.stockMin}` : ""}
                           </span>
                         )}
                       </div>

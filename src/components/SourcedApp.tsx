@@ -177,17 +177,21 @@ export default function SourcedApp() {
         <header className="header">
           <div className="logo"><span>⚡</span><span>Sourced</span><span className="logo-badge">v1</span></div>
           <nav className="nav">
-            {[
-              { id: "bom",    label: "BOM" },
-              { id: "parts",  label: "Parts" },
-              { id: "orders", label: "Orders" },
-              { id: "shops",  label: "Shops" },
-              { id: "import", label: "Import" },
-            ].map(n => (
-              <button key={n.id} className={`nav-btn ${tab === n.id ? "active" : ""}`} onClick={() => setTab(n.id)}>
-                {n.label}
-              </button>
-            ))}
+            {(() => {
+              const lowStockCount = parts.filter(p => p.stockMin > 0 && (p.stock || 0) < p.stockMin).length;
+              return [
+                { id: "bom",    label: "BOM" },
+                { id: "parts",  label: "Parts", badge: lowStockCount || null },
+                { id: "orders", label: "Orders" },
+                { id: "shops",  label: "Shops" },
+                { id: "import", label: "Import" },
+              ].map(n => (
+                <button key={n.id} className={`nav-btn ${tab === n.id ? "active" : ""}`} onClick={() => setTab(n.id)}>
+                  {n.label}
+                  {n.badge ? <span style={{ marginLeft: 5, background: "var(--red)", color: "#fff", borderRadius: 9, fontSize: 10, fontWeight: 700, padding: "1px 5px", fontFamily: "IBM Plex Mono", lineHeight: 1.4 }}>{n.badge}</span> : null}
+                </button>
+              ));
+            })()}
           </nav>
 
           {user ? (
@@ -255,9 +259,9 @@ export default function SourcedApp() {
         )}
 
         <main className="main">
-          {tab === "parts"  && <PartsTab  parts={parts} saveParts={saveParts} suppliers={suppliers} saveSuppliers={saveSuppliers} shops={shops} />}
+          {tab === "parts"  && <PartsTab  parts={parts} saveParts={saveParts} suppliers={suppliers} saveSuppliers={saveSuppliers} shops={shops} bomItems={bomItems} />}
           {tab === "bom"    && <BomTab    projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} parts={parts} saveParts={saveParts} suppliers={suppliers} saveSuppliers={saveSuppliers} shops={shops} initialProjectId={pendingBomProjectId} />}
-          {tab === "orders" && <OrderTab  shops={shops} user={user} orderContext={orderContext} />}
+          {tab === "orders" && <OrderTab  shops={shops} user={user} parts={parts} saveParts={saveParts} orderContext={orderContext} />}
           {tab === "import" && <ImportTab parts={parts} saveParts={saveParts} projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} />}
           {tab === "shops"  && <ShopsTab  shops={shops} saveShops={saveShops} />}
         </main>

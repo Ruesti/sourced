@@ -226,3 +226,20 @@ export async function sbDeleteOrderList(id: string) {
   if (!sb) return;
   await sb.from("bm_order_lists").delete().eq("id", id);
 }
+
+export async function sbLoadOrderItems(orderListId: string) {
+  const sb = await getSb();
+  if (!sb) return [];
+  const { data } = await sb.from("bm_order_items").select("*").eq("order_list_id", orderListId);
+  return (data || []).map(sbToOrderItem);
+}
+
+export async function sbUpdateOrderReceived(listId: string, items: any[], status: string) {
+  const sb = await getSb();
+  if (!sb) throw new Error("Not connected");
+  const receivedAt = status === "received" ? new Date().toISOString() : null;
+  await sb.from("bm_order_lists").update({ status, received_at: receivedAt }).eq("id", listId);
+  for (const item of items) {
+    await sb.from("bm_order_items").update({ received_qty: item.receivedQty }).eq("id", item.id);
+  }
+}

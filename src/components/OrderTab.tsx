@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 import { getApiKey } from "../lib/ai-api";
-import { sbSaveOrderLists, sbLoadOrderLists, sbDeleteOrderList } from "../lib/supabase";
+import { sbSaveOrderLists, sbLoadOrderLists, sbDeleteOrderList, sbLoadOrderItems, sbUpdateOrderReceived } from "../lib/supabase";
 
 const SCENARIO_META = {
   cheapest:  { icon: "💰", label: "Cheapest" },
@@ -131,9 +131,94 @@ function ScenarioView({ scenario, onSave, saving, user }) {
   );
 }
 
+// ── ReceiveModal ───────────────────────────────────────────────────────────────
+
+function ReceiveModal({ list, parts, onDone, onClose }) {
+  const [orderItems, setOrderItems] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [received, setReceived] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    sbLoadOrderItems(list.id).then(items => {
+      setOrderItems(items);
+      const init = {};
+      items.forEach(it => { init[it.id] = it.receivedQty || it.quantity; });
+      setReceived(init);
+    }).catch(() => setError("Failed to load order items.")).finally(() => setLoading(false));
+  }, [list.id]);
+
+  const handleConfirm = async () => {
+    setSaving(true); setError("");
+    try {
+      const updatedItems = (orderItems || []).map(it => ({ ...it, receivedQty: parseInt(received[it.id]) || 0 }));
+      const allFull = updatedItems.every(it => it.receivedQty >= it.quantity);
+      const anyReceived = updatedItems.some(it => it.receivedQty > 0);
+      const status = allFull ? "received" : anyReceived ? "partial" : "ordered";
+      await sbUpdateOrderReceived(list.id, updatedItems, status);
+      onDone(list.id, updatedItems, status);
+    } catch (e) {
+      setError(e.message);
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ width: 560 }}>
+        <div className="modal-title">📦 Receive delivery — {list.name || "Order list"}</div>
+
+        {loading && <div style={{ textAlign: "center", padding: 24 }}><span className="spinner" /></div>}
+
+        {error && <div style={{ color: "var(--red)", fontSize: 13, marginBottom: 12 }}>⚠️ {error}</div>}
+
+        {!loading && orderItems && (
+          <>
+            <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 14, lineHeight: 1.5 }}>
+              Enter the quantity actually received for each item. Stock will be updated accordingly.
+            </div>
+            <div style={{ maxHeight: 360, overflowY: "auto", marginBottom: 16, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 70px 70px", gap: 8, padding: "6px 14px", background: "var(--bg3)", fontSize: 11, fontWeight: 600, color: "var(--text2)", letterSpacing: "0.04em" }}>
+                <div>PART</div><div style={{ textAlign: "right" }}>ORDERED</div><div style={{ textAlign: "right" }}>RECEIVED</div>
+              </div>
+              {orderItems.length === 0 && (
+                <div style={{ padding: "16px 14px", fontSize: 13, color: "var(--text3)", textAlign: "center" }}>No items found for this order list.</div>
+              )}
+              {orderItems.map(it => {
+                const part = parts?.find(p => p.id === it.partId);
+                return (
+                  <div key={it.id} style={{ display: "grid", gridTemplateColumns: "1fr 70px 70px", gap: 8, padding: "8px 14px", borderTop: "1px solid var(--border)", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{part?.name || it.partId}</div>
+                      {it.sku && <div style={{ fontSize: 10, color: "var(--text3)", fontFamily: "IBM Plex Mono" }}>SKU: {it.sku}</div>}
+                    </div>
+                    <div style={{ textAlign: "right", fontFamily: "IBM Plex Mono", fontSize: 13, color: "var(--text3)" }}>{it.quantity}</div>
+                    <div>
+                      <input type="number" min="0" max={it.quantity * 2} value={received[it.id] ?? it.quantity}
+                        onChange={e => setReceived(r => ({ ...r, [it.id]: e.target.value }))}
+                        style={{ width: "100%", textAlign: "right", fontFamily: "IBM Plex Mono", background: "var(--bg3)", border: "1px solid var(--border2)", color: "var(--text)", padding: "4px 8px", borderRadius: 5, fontSize: 13 }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" disabled={saving || orderItems.length === 0} onClick={handleConfirm}>
+                {saving ? <><span className="spinner" /> Updating…</> : "✅ Confirm receipt & update stock"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── SavedListRow ───────────────────────────────────────────────────────────────
 
-function SavedListRow({ list, onDelete }) {
+function SavedListRow({ list, onDelete, onReceive }) {
   const STATUS_COLOR = { draft: "var(--text3)", ordered: "var(--blue)", partial: "var(--orange)", received: "var(--green)" };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", borderBottom: "1px solid var(--border)", fontSize: 12 }}>
@@ -144,6 +229,11 @@ function SavedListRow({ list, onDelete }) {
       <span style={{ color: STATUS_COLOR[list.status] || "var(--text3)", fontWeight: 600, fontSize: 11 }}>{list.status}</span>
       {list.totalPrice != null && <span style={{ fontFamily: "IBM Plex Mono", color: "var(--green)" }}>€{list.totalPrice.toFixed(2)}</span>}
       <span style={{ color: "var(--text3)", fontSize: 11 }}>{list.createdAt ? new Date(list.createdAt).toLocaleDateString() : ""}</span>
+      {list.status !== "received" && (
+        <button className="btn btn-secondary btn-sm" style={{ fontSize: 11, whiteSpace: "nowrap" }} onClick={() => onReceive(list)}>
+          📦 Receive
+        </button>
+      )}
       <button className="btn btn-danger" style={{ padding: "2px 8px", fontSize: 11 }} onClick={() => onDelete(list.id)}>🗑</button>
     </div>
   );
@@ -151,7 +241,7 @@ function SavedListRow({ list, onDelete }) {
 
 // ── OrderTab ───────────────────────────────────────────────────────────────────
 
-export default function OrderTab({ shops, user, orderContext }) {
+export default function OrderTab({ shops, user, parts, saveParts, orderContext }) {
   const [scenarios, setScenarios]     = useState(null);
   const [optimizing, setOptimizing]   = useState(false);
   const [optError, setOptError]       = useState("");
@@ -160,6 +250,7 @@ export default function OrderTab({ shops, user, orderContext }) {
   const [saveError, setSaveError]     = useState("");
   const [savedLists, setSavedLists]   = useState([]);
   const [listsLoaded, setListsLoaded] = useState(false);
+  const [receivingList, setReceivingList] = useState(null);
 
   useEffect(() => {
     if (orderContext?.missingItems?.length) runOptimize(orderContext);
@@ -231,6 +322,22 @@ export default function OrderTab({ shops, user, orderContext }) {
     if (!confirm("Delete this order list?")) return;
     await sbDeleteOrderList(id).catch(() => {});
     setSavedLists(prev => prev.filter(l => l.id !== id));
+  };
+
+  const handleReceiveDone = (listId, updatedItems, newStatus) => {
+    // Update saved list status in local state
+    setSavedLists(prev => prev.map(l => l.id === listId ? { ...l, status: newStatus } : l));
+    // Update parts stock
+    if (saveParts && parts) {
+      const updatedParts = parts.map(p => {
+        const received = updatedItems.filter(it => it.partId === p.id);
+        if (!received.length) return p;
+        const addedQty = received.reduce((sum, it) => sum + (it.receivedQty || 0), 0);
+        return { ...p, stock: (p.stock || 0) + addedQty };
+      });
+      saveParts(updatedParts);
+    }
+    setReceivingList(null);
   };
 
   const activeScenario = scenarios?.find(s => s.type === activeTab);
@@ -313,10 +420,19 @@ export default function OrderTab({ shops, user, orderContext }) {
           </div>
           <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
             {savedLists.map(l => (
-              <SavedListRow key={l.id} list={l} onDelete={handleDeleteList} />
+              <SavedListRow key={l.id} list={l} onDelete={handleDeleteList} onReceive={setReceivingList} />
             ))}
           </div>
         </div>
+      )}
+
+      {receivingList && (
+        <ReceiveModal
+          list={receivingList}
+          parts={parts}
+          onDone={handleReceiveDone}
+          onClose={() => setReceivingList(null)}
+        />
       )}
     </div>
   );
