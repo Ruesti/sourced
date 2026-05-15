@@ -177,3 +177,52 @@ export const shopToSb = (s, uid) => ({
   shipping_cost: s.shippingCost||0,
   supports_csv_import: s.supportsCsvImport||false,
 });
+
+// ── Order list helpers ────────────────────────────────────────────────────────
+
+export const sbToOrderList = r => ({
+  id: r.id, projectId: r.project_id||null, shopId: r.shop_id||null,
+  name: r.name||"", status: r.status||"draft",
+  totalPrice: r.total_price ? parseFloat(r.total_price) : null,
+  currency: r.currency||"EUR", notes: r.notes||"",
+  orderedAt: r.ordered_at||null, receivedAt: r.received_at||null, createdAt: r.created_at,
+});
+
+export const sbToOrderItem = r => ({
+  id: r.id, orderListId: r.order_list_id, partId: r.part_id,
+  quantity: r.quantity, unitPrice: r.unit_price ? parseFloat(r.unit_price) : null,
+  sku: r.sku||"", receivedQty: r.received_qty||0,
+});
+
+export async function sbSaveOrderLists(lists: any[], items: any[], userId: string) {
+  const sb = await getSb();
+  if (!sb) throw new Error("Not connected to Supabase");
+  const dbLists = lists.map(l => ({
+    id: l.id, user_id: userId, project_id: l.projectId||null, shop_id: l.shopId||null,
+    name: l.name||null, status: l.status||"draft",
+    total_price: l.totalPrice||null, currency: l.currency||"EUR", notes: l.notes||null,
+  }));
+  const dbItems = items.map(i => ({
+    id: i.id, order_list_id: i.orderListId, part_id: i.partId,
+    quantity: i.quantity, unit_price: i.unitPrice||null, sku: i.sku||null, received_qty: 0,
+  }));
+  const { error: le } = await sb.from("bm_order_lists").upsert(dbLists, { onConflict: "id" });
+  if (le) throw new Error(le.message);
+  if (dbItems.length > 0) {
+    const { error: ie } = await sb.from("bm_order_items").upsert(dbItems, { onConflict: "id" });
+    if (ie) throw new Error(ie.message);
+  }
+}
+
+export async function sbLoadOrderLists(userId: string) {
+  const sb = await getSb();
+  if (!sb) return [];
+  const { data } = await sb.from("bm_order_lists").select("*").eq("user_id", userId).order("created_at", { ascending: false });
+  return (data || []).map(sbToOrderList);
+}
+
+export async function sbDeleteOrderList(id: string) {
+  const sb = await getSb();
+  if (!sb) return;
+  await sb.from("bm_order_lists").delete().eq("id", id);
+}

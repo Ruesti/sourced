@@ -802,7 +802,7 @@ Reply ONLY with a JSON array (same order):
                     {gapResult.missing > 0 && <><span style={{ color: "var(--text2)" }}>·</span><span style={{ color: "var(--red)" }}>{gapResult.missing} missing</span></>}
                   </div>
                   {gapResult.missingItems.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
                       {gapResult.missingItems.map(mi => (
                         <span key={mi.partId} style={{ fontSize: 11, background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 7px", color: "var(--text2)" }} title={mi.mpn || undefined}>
                           {mi.missing}× {mi.name}
@@ -810,6 +810,26 @@ Reply ONLY with a JSON array (same order):
                         </span>
                       ))}
                     </div>
+                  )}
+                  {gapResult.missing > 0 && (
+                    <button className="btn btn-sm btn-primary" style={{ fontSize: 11 }}
+                      onClick={() => window.dispatchEvent(new CustomEvent("switchTab", {
+                        detail: {
+                          tab: "orders",
+                          orderContext: {
+                            projectId: activeProject.id,
+                            projectName: activeProject.name,
+                            missingItems: gapResult.missingItems.map(mi => ({
+                              ...mi,
+                              suppliers: suppliers
+                                .filter(s => s.partId === mi.partId && s.price != null)
+                                .map(s => ({ shopId: s.shopId, shopName: s.shopName, price: s.price, moq: s.moq||1, stock: s.stock, sku: s.sku||"" })),
+                            })),
+                          },
+                        },
+                      }))}>
+                      🛍️ Order missing parts →
+                    </button>
                   )}
                 </div>
               )}

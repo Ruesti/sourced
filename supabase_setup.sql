@@ -138,3 +138,42 @@ ALTER TABLE bm_ai_matches ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "users own their ai matches" ON bm_ai_matches;
 CREATE POLICY "users own their ai matches" ON bm_ai_matches
   USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+-- ── Order Lists (Phase 3) ───────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS bm_order_lists (
+  id          text        PRIMARY KEY,
+  user_id     uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  project_id  text,
+  shop_id     text        REFERENCES bm_shops(id),
+  name        text,
+  status      text        NOT NULL DEFAULT 'draft',
+  total_price numeric(12,4),
+  currency    text        NOT NULL DEFAULT 'EUR',
+  notes       text,
+  ordered_at  timestamptz,
+  received_at timestamptz,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE bm_order_lists ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "users own their order lists" ON bm_order_lists;
+CREATE POLICY "users own their order lists" ON bm_order_lists
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+CREATE TABLE IF NOT EXISTS bm_order_items (
+  id            text        PRIMARY KEY,
+  order_list_id text        NOT NULL REFERENCES bm_order_lists(id) ON DELETE CASCADE,
+  part_id       text        NOT NULL,
+  quantity      integer     NOT NULL DEFAULT 1,
+  unit_price    numeric(12,4),
+  sku           text,
+  received_qty  integer     NOT NULL DEFAULT 0,
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE bm_order_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "users own their order items" ON bm_order_items;
+CREATE POLICY "users own their order items" ON bm_order_items
+  USING (
+    order_list_id IN (SELECT id FROM bm_order_lists WHERE user_id = auth.uid())
+  ) WITH CHECK (
+    order_list_id IN (SELECT id FROM bm_order_lists WHERE user_id = auth.uid())
+  );

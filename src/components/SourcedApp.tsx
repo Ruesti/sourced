@@ -17,6 +17,7 @@ import PartsTab from "./PartsTab";
 import BomTab from "./BomTab";
 import ImportTab from "./ImportTab";
 import ShopsTab from "./ShopsTab";
+import OrderTab from "./OrderTab";
 import { AuthModal, MigrationModal, HelpModal, ApiKeyModal, OnboardingScreen } from "./Modals";
 
 export default function SourcedApp() {
@@ -89,12 +90,14 @@ export default function SourcedApp() {
   }, []);
 
   const [pendingBomProjectId, setPendingBomProjectId] = useState<string|null>(null);
+  const [orderContext, setOrderContext] = useState(null);
   useEffect(() => {
     const handler = (e) => {
       const d = e.detail;
       if (d && typeof d === "object") {
         setTab(d.tab);
         if (d.projectId) setPendingBomProjectId(d.projectId);
+        if (d.orderContext) setOrderContext(d.orderContext);
       } else {
         setTab(d);
       }
@@ -177,6 +180,7 @@ export default function SourcedApp() {
             {[
               { id: "bom",    label: "BOM" },
               { id: "parts",  label: "Parts" },
+              { id: "orders", label: "Orders" },
               { id: "shops",  label: "Shops" },
               { id: "import", label: "Import" },
             ].map(n => (
@@ -253,6 +257,7 @@ export default function SourcedApp() {
         <main className="main">
           {tab === "parts"  && <PartsTab  parts={parts} saveParts={saveParts} suppliers={suppliers} saveSuppliers={saveSuppliers} shops={shops} />}
           {tab === "bom"    && <BomTab    projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} parts={parts} saveParts={saveParts} suppliers={suppliers} saveSuppliers={saveSuppliers} shops={shops} initialProjectId={pendingBomProjectId} />}
+          {tab === "orders" && <OrderTab  shops={shops} user={user} orderContext={orderContext} />}
           {tab === "import" && <ImportTab parts={parts} saveParts={saveParts} projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} />}
           {tab === "shops"  && <ShopsTab  shops={shops} saveShops={saveShops} />}
         </main>
