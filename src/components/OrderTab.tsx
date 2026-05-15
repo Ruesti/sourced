@@ -1,6 +1,5 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
-import { getApiKey } from "../lib/ai-api";
 import { sbSaveOrderLists, sbLoadOrderLists, sbDeleteOrderList, sbLoadOrderItems, sbUpdateOrderReceived } from "../lib/supabase";
 
 const SCENARIO_META = {
@@ -241,10 +240,7 @@ function SavedListRow({ list, onDelete, onReceive }) {
 
 // ── OrderTab ───────────────────────────────────────────────────────────────────
 
-export default function OrderTab({ shops, user, parts, saveParts, orderContext }) {
-  const [scenarios, setScenarios]     = useState(null);
-  const [optimizing, setOptimizing]   = useState(false);
-  const [optError, setOptError]       = useState("");
+export default function OrderTab({ shops, user, parts, saveParts, orderContext, scenarios, onRerun }) {
   const [activeTab, setActiveTab]     = useState("cheapest");
   const [saving, setSaving]           = useState(false);
   const [saveError, setSaveError]     = useState("");
@@ -253,37 +249,10 @@ export default function OrderTab({ shops, user, parts, saveParts, orderContext }
   const [receivingList, setReceivingList] = useState(null);
 
   useEffect(() => {
-    if (orderContext?.missingItems?.length) runOptimize(orderContext);
-  }, [orderContext]);
-
-  useEffect(() => {
     if (user && !listsLoaded) {
       sbLoadOrderLists(user.id).then(lists => { setSavedLists(lists); setListsLoaded(true); }).catch(() => {});
     }
   }, [user, listsLoaded]);
-
-  const runOptimize = async (ctx) => {
-    setOptimizing(true); setOptError(""); setScenarios(null);
-    try {
-      const shopData = shops.map(s => ({
-        id: s.id, name: s.name,
-        freeShippingThreshold: s.freeShippingThreshold ?? null,
-        shippingCost: s.shippingCost || 0,
-        aliOk: s.aliOk, trusted: s.trusted,
-      }));
-      const r = await fetch("/api/ai/optimize-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ missingParts: ctx.missingItems, shops: shopData, apiKey: getApiKey() }),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Optimization failed");
-      setScenarios(data.scenarios || []);
-    } catch (e) {
-      setOptError(e.message);
-    }
-    setOptimizing(false);
-  };
 
   const handleSave = async (scenario) => {
     if (!user) return;
@@ -362,28 +331,12 @@ export default function OrderTab({ shops, user, parts, saveParts, orderContext }
             <strong style={{ fontSize: 13 }}>{orderContext.projectName}</strong>
           </div>
           <div style={{ fontSize: 12, color: "var(--text3)" }}>·</div>
-          <div style={{ fontSize: 12, color: "var(--red)" }}>{orderContext.missingItems?.length} parts to order</div>
-          <div style={{ marginLeft: "auto" }}>
-            <button className="btn btn-ai btn-sm" disabled={optimizing} onClick={() => runOptimize(orderContext)}>
-              {optimizing ? <><span className="spinner" /> Optimizing…</> : "🔄 Re-run optimization"}
-            </button>
+          <div style={{ fontSize: 12, color: "var(--red)" }}>
+            {orderContext.missingItems?.length} parts · {orderContext.missingItems?.filter(m => m.suppliers?.length > 0).length} with prices
           </div>
-        </div>
-      )}
-
-      {optimizing && (
-        <div style={{ textAlign: "center", padding: "48px 0", color: "var(--text2)" }}>
-          <span className="spinner" style={{ width: 24, height: 24, margin: "0 auto 16px", display: "block" }} />
-          <div style={{ fontSize: 14, fontWeight: 600 }}>Optimizing order…</div>
-          <div style={{ fontSize: 12, marginTop: 8, color: "var(--text3)" }}>AI is calculating the best combination of shops, prices and shipping</div>
-        </div>
-      )}
-
-      {optError && !optimizing && (
-        <div style={{ background: "rgba(248,81,73,0.08)", border: "1px solid rgba(248,81,73,0.25)", borderRadius: 8, padding: "12px 16px", marginBottom: 20 }}>
-          <div style={{ color: "var(--red)", fontWeight: 600, marginBottom: 6 }}>⚠️ Optimization failed</div>
-          <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 10 }}>{optError}</div>
-          <button className="btn btn-secondary btn-sm" onClick={() => runOptimize(orderContext)}>Retry</button>
+          <div style={{ marginLeft: "auto" }}>
+            <button className="btn btn-secondary btn-sm" onClick={onRerun}>🔄 Recalculate</button>
+          </div>
         </div>
       )}
 

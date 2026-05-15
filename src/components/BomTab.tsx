@@ -862,6 +862,18 @@ Reply ONLY with a JSON array (same order):
                     <tbody>
                       {projectBom.map(item => {
                         const part = parts.find(p => p.id === item.partId);
+                        if (!part) return (
+                          <tr key={item.id} style={{ background: "rgba(248,81,73,0.06)" }}>
+                            <td><span className="bom-qty">{item.quantity}×</span></td>
+                            <td colSpan={4}>
+                              <span style={{ color: "var(--red)", fontSize: 12 }}>⚠ Part deleted from database</span>
+                              {item.reference && <span style={{ color: "var(--text3)", fontSize: 11, marginLeft: 8 }}>({item.reference})</span>}
+                            </td>
+                            <td>
+                              <button className="btn btn-danger btn-sm" onClick={() => deleteItem(item.id)}>Remove</button>
+                            </td>
+                          </tr>
+                        );
                         const sups = suppliers.filter(s => s.partId === item.partId);
                         const preferred = getPreferredSupplier(item, sups);
                         const prefPrice = preferred?.price;

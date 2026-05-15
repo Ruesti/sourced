@@ -13,6 +13,7 @@ import {
 } from "../lib/supabase";
 import { getApiKey } from "../lib/ai-api";
 import { DEFAULT_SHOPS } from "../lib/shop-data";
+import { computeScenarios } from "../lib/order-optimizer";
 import PartsTab from "./PartsTab";
 import BomTab from "./BomTab";
 import ImportTab from "./ImportTab";
@@ -90,21 +91,26 @@ export default function SourcedApp() {
   }, []);
 
   const [pendingBomProjectId, setPendingBomProjectId] = useState<string|null>(null);
-  const [orderContext, setOrderContext] = useState(null);
+  const [orderContext, setOrderContext]     = useState(null);
+  const [orderScenarios, setOrderScenarios] = useState(null);
   useEffect(() => {
     const handler = (e) => {
       const d = e.detail;
       if (d && typeof d === "object") {
         setTab(d.tab);
         if (d.projectId) setPendingBomProjectId(d.projectId);
-        if (d.orderContext) setOrderContext(d.orderContext);
+        if (d.orderContext) {
+          setOrderContext(d.orderContext);
+          // Compute immediately — no AI call, no token limit, survives tab switches
+          setOrderScenarios(computeScenarios(d.orderContext.missingItems, shops));
+        }
       } else {
         setTab(d);
       }
     };
     window.addEventListener("switchTab", handler);
     return () => window.removeEventListener("switchTab", handler);
-  }, []);
+  }, [shops]); // shops needed for shipping calc
 
   const sync = (table, rows, mapper) => {
     if (!user) return;
@@ -261,7 +267,7 @@ export default function SourcedApp() {
         <main className="main">
           {tab === "parts"  && <PartsTab  parts={parts} saveParts={saveParts} suppliers={suppliers} saveSuppliers={saveSuppliers} shops={shops} bomItems={bomItems} />}
           {tab === "bom"    && <BomTab    projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} parts={parts} saveParts={saveParts} suppliers={suppliers} saveSuppliers={saveSuppliers} shops={shops} initialProjectId={pendingBomProjectId} />}
-          {tab === "orders" && <OrderTab  shops={shops} user={user} parts={parts} saveParts={saveParts} orderContext={orderContext} />}
+          {tab === "orders" && <OrderTab  shops={shops} user={user} parts={parts} saveParts={saveParts} orderContext={orderContext} scenarios={orderScenarios} onRerun={() => orderContext && setOrderScenarios(computeScenarios(orderContext.missingItems, shops))} />}
           {tab === "import" && <ImportTab parts={parts} saveParts={saveParts} projects={projects} saveProjects={saveProjects} bomItems={bomItems} saveBom={saveBom} />}
           {tab === "shops"  && <ShopsTab  shops={shops} saveShops={saveShops} />}
         </main>
